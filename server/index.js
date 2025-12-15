@@ -15,8 +15,13 @@ app.use(express.json());
 
 // --- Piston Execution API ---
 app.post('/execute', async (req, res) => {
-  const { code, language } = req.body;
-  console.log("Executing code...", language);
+  const { code, language, stdin } = req.body;
+  
+  // LOGGING INPUT
+  console.log("------------------------------------------------");
+  console.log(`[EXECUTE] Language: ${language}`);
+  console.log(`[EXECUTE] Stdin: "${stdin}"`);
+  console.log("------------------------------------------------");
 
   try {
     const RUNTIMES = {
@@ -31,10 +36,15 @@ app.post('/execute', async (req, res) => {
         body: JSON.stringify({
             language: language || 'javascript',
             version: version,
-            files: [{ content: code }]
+            files: [{ content: code }],
+            stdin: stdin || ""
         })
     });
     const data = await response.json();
+    
+    // LOGGING OUTPUT
+    console.log("[EXECUTE] Result:", JSON.stringify(data));
+    
     res.json(data);
   } catch (error) {
     console.error("Execution Code Error:", error);

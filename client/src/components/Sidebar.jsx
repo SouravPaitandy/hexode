@@ -1,141 +1,262 @@
-import { useState } from 'react';
-import { FileCode, FileJson, FileType, File, Plus, Trash2, Edit2, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { FileCode, FileJson, FileType, File, Plus, Trash2, Edit2, ChevronDown, ChevronRight, FolderOpen, Folder, FolderPlus } from 'lucide-react';
+import { buildFileTree } from '../utils/fileSystem';
 
-const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) => {
-  const [isCreating, setIsCreating] = useState(false);
-  const [newFileName, setNewFileName] = useState("");
-  
-  // Renaming State
-  const [editingFile, setEditingFile] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [hoveredFile, setHoveredFile] = useState(null);
+// --- Recursive File Node ---
+const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSelect, onRename, onDelete, hoveredFile, setHoveredFile, editingFile, setEditingFile, editName, setEditName, handleRenameSubmit }) => {
+    const isExpanded = expandedFolders.has(node.path);
+    const isSelected = activeFile === node.path;
+    
+    // Icons
+    const getFileIcon = (fileName) => {
+        if (fileName.endsWith('.js') || fileName.endsWith('.jsx')) return <FileCode size={14} className="text-yellow-400" />; 
+        if (fileName.endsWith('.ts') || fileName.endsWith('.tsx')) return <FileCode size={14} className="text-blue-400" />; 
+        if (fileName.endsWith('.py')) return <FileCode size={14} className="text-blue-300" />; 
+        if (fileName.endsWith('.java')) return <FileCode size={14} className="text-orange-400" />; 
+        if (fileName.endsWith('.cpp') || fileName.endsWith('.c')) return <FileCode size={14} className="text-blue-600" />;
+        if (fileName.endsWith('.css')) return <FileType size={14} className="text-sky-400" />;
+        if (fileName.endsWith('.html')) return <FileCode size={14} className="text-orange-500" />;
+        if (fileName.endsWith('.json')) return <FileJson size={14} className="text-yellow-200" />;
+        return <File size={14} className="text-muted" />;
+    };
 
-  const handleCreate = (e) => {
-    e.preventDefault();
-    if (newFileName.trim()) {
-      onCreate(newFileName.trim());
-      setNewFileName("");
-      setIsCreating(false);
-    }
-  };
+    const handleClick = (e) => {
+        e.stopPropagation();
+        if (node.type === 'folder') {
+            toggleFolder(node.path);
+        } else {
+            onSelect(node.path);
+        }
+    };
 
-  const handleRenameSubmit = (e) => {
-      e.preventDefault();
-      if (editName.trim() && editName !== editingFile) {
-          onRename(editingFile, editName.trim());
-      }
-      setEditingFile(null);
-  }
+    const startRenaming = (e) => {
+        e.stopPropagation();
+        setEditingFile(node.path);
+        setEditName(node.name);
+    };
 
-  const startRenaming = (e, fileName) => {
-      e.stopPropagation();
-      setEditingFile(fileName);
-      setEditName(fileName);
-  }
-
-  const getFileIcon = (fileName) => {
-      if (fileName.endsWith('.js')) return <FileCode size={16} color="#f7df1e" />; 
-      if (fileName.endsWith('.py')) return <FileCode size={16} color="#3776ab" />; 
-      if (fileName.endsWith('.java')) return <FileCode size={16} color="#b07219" />; 
-      if (fileName.endsWith('.cpp') || fileName.endsWith('.c')) return <FileCode size={16} color="#00599c" />;
-      if (fileName.endsWith('.css')) return <FileType size={16} color="#264de4" />;
-      if (fileName.endsWith('.html')) return <FileCode size={16} color="#e34c26" />;
-      if (fileName.endsWith('.json')) return <FileJson size={16} color="#cbcb41" />;
-      return <File size={16} color="#ccc" />;
-  };
-
-  return (
-    <div style={{ width: "250px", flexShrink: 0, background: "#16161a", borderRight: "1px solid #222", display: "flex", flexDirection: "column", color: "#8892b0" }}>
-      <div style={{ padding: "15px", fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>💾 Explorer</span>
-        <button 
-            onClick={() => setIsCreating(true)}
-            style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", display: "flex", alignItems: "center", padding: "4px", borderRadius: "4px" }}
-            title="New File"
-        >
-            <Plus size={18} />
-        </button>
-      </div>
-
-      {isCreating && (
-        <form onSubmit={handleCreate} style={{ padding: "10px" }}>
-            <input 
-                autoFocus
-                type="text" 
-                placeholder="filename.js" 
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                onBlur={() => setIsCreating(false)} // Cancel on click away
-                style={{ width: "100%", background: "#0f0f12", border: "1px solid #007acc", color: "white", padding: "6px 10px", borderRadius: "4px", outline: "none", fontSize: "0.9rem" }}
-            />
-        </form>
-      )}
-
-      <div style={{ flex: 1, overflowY: "auto", paddingTop: "5px" }}>
-        {files.map((fileName) => (
+    return (
+        <div>
             <div 
-                key={fileName}
-                onMouseEnter={() => setHoveredFile(fileName)}
+                className={`flex items-center gap-1.5 py-1 pr-2 cursor-pointer transition-colors text-sm
+                    ${isSelected ? "bg-card text-foreground border-l-2 border-blue-500" : "text-zinc-400 border-l-2 border-transparent hover:bg-card/50 hover:text-zinc-300"}
+                `}
+                style={{ paddingLeft: `${depth * 12 + 12}px` }}
+                onClick={handleClick}
+                onMouseEnter={() => setHoveredFile(node.path)}
                 onMouseLeave={() => setHoveredFile(null)}
-                onClick={() => onSelect(fileName)}
-                style={{ 
-                    padding: "8px 15px", 
-                    cursor: "pointer", 
-                    background: activeFile === fileName ? "#222" : "transparent", 
-                    color: activeFile === fileName ? "#fff" : "#8892b0", 
-                    display: "flex", 
-                    alignItems: "center", 
-                    justifyContent: "space-between",
-                    gap: "8px",
-                    borderLeft: activeFile === fileName ? "3px solid #007acc" : "3px solid transparent",
-                    fontSize: "0.9rem",
-                    transition: "all 0.2s ease"
-                }}
             >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, overflow: "hidden" }}>
-                    {getFileIcon(fileName)}
-                    {editingFile === fileName ? (
-                         <form onSubmit={handleRenameSubmit} style={{ flex: 1 }}>
+                {/* Expand Arrow for Folders */}
+                <span className="w-4 flex items-center justify-center shrink-0">
+                    {node.type === 'folder' && (
+                        isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />
+                    )}
+                </span>
+
+                {/* File/Folder Icon */}
+                <span className="shrink-0">
+                    {node.type === 'folder' 
+                        ? (isExpanded ? <FolderOpen size={14} className="text-blue-400" /> : <Folder size={14} className="text-blue-400" />)
+                        : getFileIcon(node.name)
+                    }
+                </span>
+
+                {/* Name or Edit Input */}
+                <div className="flex-1 overflow-hidden">
+                    {editingFile === node.path ? (
+                        <form onSubmit={handleRenameSubmit} onClick={(e) => e.stopPropagation()}>
                             <input 
                                 autoFocus
                                 type="text"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 onBlur={handleRenameSubmit}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ width: "100%", background: "#0f0f12", border: "1px solid #007acc", color: "white", padding: "2px 4px", borderRadius: "2px", outline: "none", fontSize: "0.9rem" }}
+                                className="w-full bg-zinc-900 border border-blue-500 text-foreground px-1 py-0.5 rounded-sm outline-none text-xs"
                             />
-                         </form>
+                        </form>
                     ) : (
-                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fileName}</span>
+                        <span className="truncate block">{node.name}</span>
                     )}
                 </div>
 
-                {/* Actions (Only show on hover and not editing) */}
-                {hoveredFile === fileName && editingFile !== fileName && (
-                    <div style={{ display: "flex", gap: "5px" }}>
-                        <button 
-                            onClick={(e) => startRenaming(e, fileName)} 
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#8892b0", padding: "2px" }}
+                {/* Actions */}
+                {hoveredFile === node.path && editingFile !== node.path && (
+                    <div className="flex gap-1 shrink-0 bg-surface pl-2">
+                         <button 
+                            onClick={startRenaming} 
+                            className="bg-transparent border-none cursor-pointer text-muted hover:text-foreground p-0.5"
                             title="Rename"
                         >
-                            <Edit2 size={14} className="hover-icon" />
+                            <Edit2 size={12} />
                         </button>
                         <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete(fileName); }}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#8892b0", padding: "2px" }}
+                            onClick={(e) => { e.stopPropagation(); onDelete(node.path); }}
+                            className="bg-transparent border-none cursor-pointer text-muted hover:text-red-400 p-0.5"
                             title="Delete"
                         >
-                            <Trash2 size={14} className="hover-icon" />
+                            <Trash2 size={12} />
                         </button>
                     </div>
                 )}
             </div>
+
+            {/* Children (Recursive) */}
+            {node.type === 'folder' && isExpanded && node.children && (
+                <div>
+                    {node.children.map(child => (
+                        <FileNode 
+                            key={child.path} 
+                            node={child} 
+                            depth={depth + 1}
+                            activeFile={activeFile}
+                            expandedFolders={expandedFolders}
+                            toggleFolder={toggleFolder}
+                            onSelect={onSelect}
+                            onRename={onRename}
+                            onDelete={onDelete}
+                            hoveredFile={hoveredFile}
+                            setHoveredFile={setHoveredFile}
+                            editingFile={editingFile}
+                            setEditingFile={setEditingFile}
+                            editName={editName}
+                            setEditName={setEditName}
+                            handleRenameSubmit={handleRenameSubmit}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) => {
+  const [isCreating, setIsCreating] = useState(false); // false | 'file' | 'folder'
+  const [creationPath, setCreationPath] = useState(""); // where to create
+  const [newName, setNewName] = useState("");
+  
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
+  const [hoveredFile, setHoveredFile] = useState(null);
+  const [editingFile, setEditingFile] = useState(null);
+  const [editName, setEditName] = useState("");
+
+  const tree = useMemo(() => buildFileTree(files), [files]);
+
+  const toggleFolder = (path) => {
+      setExpandedFolders(prev => {
+          const next = new Set(prev);
+          if (next.has(path)) next.delete(path);
+          else next.add(path);
+          return next;
+      });
+  };
+
+  const handleCreateSubmit = (e) => {
+    e.preventDefault();
+    if (newName.trim()) {
+      // If creating folder, append slash (optional logic, but here we just pass path)
+      // Actually sidebar passes path. IDE.jsx should handle if it is a folder or just a filename.
+      // But Yjs map doesn't strictly have folder objects. We create a placeholder file or just implied.
+      // Simplest: Just create empty file for now? User asked for recursive system.
+      // Let's assume creating a file at root or path.
+      
+      const fullPath = creationPath ? `${creationPath}/${newName.trim()}` : newName.trim();
+      
+      // If mode is 'folder', maybe create a .keep file?
+      const finalPath = isCreating === 'folder' ? `${fullPath}/.keep` : fullPath;
+      
+      onCreate(finalPath);
+      setNewName("");
+      setIsCreating(false);
+      
+      // Auto expand parent
+      if (creationPath) {
+          setExpandedFolders(prev => new Set(prev).add(creationPath));
+      }
+    }
+  };
+
+  const handleRenameSubmit = (e) => {
+      e.preventDefault();
+      if (editName.trim() && editName !== editingFile) {
+          // Check if it's a full path rename or just name
+          // We need to keep the parent path
+          const pathParts = editingFile.split('/');
+          pathParts.pop(); // remove old name
+          const parentPath = pathParts.join('/');
+          const newPath = parentPath ? `${parentPath}/${editName.trim()}` : editName.trim();
+          
+          onRename(editingFile, newPath);
+      }
+      setEditingFile(null);
+  };
+
+  return (
+    <div className="w-full h-full bg-surface border-r border-border flex flex-col text-muted select-none">
+      <div className="px-4 py-3 text-xs font-bold uppercase tracking-widest flex justify-between items-center text-muted bg-dark border-b border-border">
+        <span className="flex items-center gap-1.5"><ChevronDown size={14} /> EXPLORER</span>
+        <div className="flex gap-1">
+             <button 
+                onClick={() => { setIsCreating('file'); setCreationPath(""); }}
+                className="text-muted hover:text-foreground hover:bg-zinc-700/50 p-1 rounded transition-colors"
+                title="New File"
+            >
+                <Plus size={14} />
+            </button>
+             <button 
+                onClick={() => { setIsCreating('folder'); setCreationPath(""); }}
+                className="text-muted hover:text-foreground hover:bg-zinc-700/50 p-1 rounded transition-colors"
+                title="New Folder"
+            >
+                <FolderPlus size={14} />
+            </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pt-2">
+        {/* Creation Input at Root */}
+        {isCreating && !creationPath && (
+             <div className="px-4 py-1 pb-2">
+                <form onSubmit={handleCreateSubmit} className="flex items-center gap-1.5">
+                    {isCreating === 'folder' ? <Folder size={14} className="text-blue-400" /> : <File size={14} className="text-muted" />}
+                    <input 
+                        autoFocus
+                        type="text" 
+                        placeholder={isCreating === 'folder' ? "folder name" : "filename.js"}
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onBlur={() => setIsCreating(false)} 
+                        className="w-full bg-card border border-blue-500 text-foreground px-1.5 py-0.5 rounded-sm outline-none text-xs"
+                    />
+                </form>
+            </div>
+        )}
+
+        {tree.length === 0 && !isCreating && (
+            <div className="text-center text-xs text-zinc-600 mt-4 italic">Empty Project</div>
+        )}
+
+        {tree.map(node => (
+            <FileNode 
+                key={node.path}
+                node={node}
+                depth={0}
+                activeFile={activeFile}
+                expandedFolders={expandedFolders}
+                toggleFolder={toggleFolder}
+                onSelect={onSelect}
+                onRename={onRename}
+                onDelete={onDelete}
+                hoveredFile={hoveredFile}
+                setHoveredFile={setHoveredFile}
+                editingFile={editingFile}
+                setEditingFile={setEditingFile}
+                editName={editName}
+                setEditName={setEditName}
+                handleRenameSubmit={handleRenameSubmit}
+            />
         ))}
       </div>
-      <style>{`
-        .hover-icon:hover { color: white !important; }
-      `}</style>
     </div>
   );
 };

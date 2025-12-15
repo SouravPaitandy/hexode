@@ -1,19 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Folder, Clock, MoreVertical, Trash2, Code, Edit2, Check } from 'lucide-react';
+import { Plus, Folder, Clock, MoreVertical, Trash2, Code, Edit2, Check, Layout, Search, Zap } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const timeAgo = (dateString) => {
+      if (dateString === "Demo") return "Demo Project";
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + " years ago";
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + " months ago";
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + " days ago";
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + " hours ago";
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + " mins ago";
+      return Math.floor(seconds) + " seconds ago";
+  };
+
+  const LANG_COLORS = { "Python": "#3572A5", "JavaScript": "#f1e05a", "Java": "#b07219", "C++": "#f34b7d", "Default": "#ccc" };
 
   // Demo Data
   const DEMO_PROJECTS = [
-    { id: "demo-python", name: "Python Algorithms", lang: "Python", createdAt: new Date().toISOString(), time: "Demo" },
-    { id: "demo-java", name: "Java Backend Service", lang: "Java", createdAt: new Date().toISOString(), time: "Demo" },
-    { id: "demo-cpp", name: "C++ Game Engine", lang: "C++", createdAt: new Date().toISOString(), time: "Demo" },
+    { id: "demo-python", name: "Python Algorithms", lang: "Python", createdAt: new Date(Date.now() - 100000000).toISOString() },
+    { id: "demo-java", name: "Java Backend Service", lang: "Java", createdAt: new Date(Date.now() - 200000000).toISOString() },
+    { id: "demo-cpp", name: "C++ Game Engine", lang: "C++", createdAt: new Date(Date.now() - 300000000).toISOString() },
   ];
 
   // Load Projects from LocalStorage (with Seeding Logic)
@@ -27,18 +49,13 @@ const Dashboard = () => {
     }
 
     if (!hasSeeded) {
-      // First time seeding demos (even if other projects exist)
-      // Filter out demos if they already exist to avoid dups (paranoid check)
       const existingIds = new Set(loadedProjects.map(p => p.id));
       const demosToAdd = DEMO_PROJECTS.filter(d => !existingIds.has(d.id));
-      
       loadedProjects = [...loadedProjects, ...demosToAdd];
-      
       localStorage.setItem('devdock-projects', JSON.stringify(loadedProjects));
       localStorage.setItem('devdock-demos-v1', 'true');
     }
 
-    // Sort by Date
     setProjects(loadedProjects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
   }, []);
 
@@ -46,30 +63,25 @@ const Dashboard = () => {
     const id = "proj-" + Math.floor(Math.random() * 10000);
     const newProject = {
       id,
-      name: `Untitled Project ${Math.floor(Math.random() * 100)}`,
+      name: `Untitled Project`,
       lang: "JavaScript",
-      createdAt: new Date().toISOString(),
-      time: "Just now"
+      createdAt: new Date().toISOString()
     };
 
     const updated = [newProject, ...projects];
     setProjects(updated);
     localStorage.setItem('devdock-projects', JSON.stringify(updated));
-    
     navigate(`/editor/${id}`);
   };
 
   const deleteProject = (e, id) => {
-    e.preventDefault(); // Prevent navigation
+    e.preventDefault(); 
     e.stopPropagation();
-    const updated = projects.filter(p => p.id !== id);
-    setProjects(updated);
-    localStorage.setItem('devdock-projects', JSON.stringify(updated));
-  };
-
-  const formatDate = (isoString) => {
-    const date = new Date(isoString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    if (confirm("Are you sure you want to delete this project?")) {
+        const updated = projects.filter(p => p.id !== id);
+        setProjects(updated);
+        localStorage.setItem('devdock-projects', JSON.stringify(updated));
+    }
   };
 
   const startEditing = (e, p) => {
@@ -88,133 +100,131 @@ const Dashboard = () => {
     setEditingId(null);
   };
 
+  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
   return (
-    <div style={{ background: "#0f0f12", minHeight: "100vh", color: "white", fontFamily: "'Inter', sans-serif" }}>
-       {/* Header */}
-      <div style={{ position: "fixed", top: "0", left: "0", right: "0", zIndex: "1000", padding: "20px 50px", borderBottom: "1px solid #222", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#16161a" }}>
-        <div style={{ fontSize: "1.4rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "12px", color: "#e0e0e0" }}>
-            <div style={{ background: "#007acc", padding: "8px", borderRadius: "8px", display: "flex" }}>
-                <Code size={24} color="white" />
+    <div className="bg-background min-h-screen text-foreground font-sans">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-4 border-b border-border flex justify-between items-center bg-surface/80 backdrop-blur-md">
+        <div className="text-2xl font-bold flex items-center gap-3 text-foreground">
+            <div className="bg-gradient-to-br from-blue-600 to-cyan-400 p-2 rounded-xl flex shadow-lg shadow-blue-500/30">
+                <Code size={22} color="white" />
             </div>
-            DevDock Dashboard
+            DevDock
         </div>
-        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-             <Link to="/" style={{ textDecoration: "none", color: "#8892b0", fontSize: "0.9rem", fontWeight: "600" }}>Home</Link>
-             <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "linear-gradient(135deg, #007acc, #00d4ff)", border: "2px solid #222" }}></div>
+        <div className="flex gap-5 items-center">
+             <div className="hidden md:block relative">
+                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                 <input 
+                    type="text" 
+                    placeholder="Search projects..." 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="bg-card border border-border rounded-lg py-2 pl-9 pr-3 text-foreground focus:outline-none focus:border-primary text-sm w-64 transition-colors placeholder:text-muted"
+                 />
+             </div>
+             <div className="h-6 w-[1px] bg-border"></div>
+             <ThemeToggle />
+             <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-cyan-400 border-2 border-border flex justify-center items-center text-sm font-bold text-white">S</div>
         </div>
       </div>
 
-      <div style={{ padding: "100px 50px", maxWidth: "1200px", margin: "0 auto" }}>
+      <div className="pt-32 px-6 md:px-12 max-w-7xl mx-auto">
         
         {/* Welcome */}
-        <div style={{ marginBottom: "50px", display: "flex", justifyContent: "space-between", alignItems: "end", borderBottom: "1px solid #222", paddingBottom: "30px" }}>
+        <div className="mb-12 flex justify-between items-end">
             <div>
-                <h1 style={{ fontSize: "2.5rem", marginBottom: "15px" }}><span style={{ background: "linear-gradient(90deg, #fff, #8892b0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }} >Welcome back, Coder! </span>👋</h1>
-                <p style={{ color: "#8892b0", fontSize: "1.1rem" }}>Pick up where you left off or start building something new.</p>
+                <h1 className="text-4xl font-extrabold mb-2 text-foreground">Dashboard</h1>
+                <p className="text-muted text-lg">Manage your projects and deployments.</p>
             </div>
-            <button 
-                onClick={handleNewProject}
-                style={{ 
-                    display: "flex", alignItems: "center", gap: "10px", padding: "14px 28px", 
-                    background: "#007acc", color: "white", border: "none", borderRadius: "8px", 
-                    cursor: "pointer", fontWeight: "600", fontSize: "1rem", boxShadow: "0 4px 15px rgba(0, 122, 204, 0.3)",
-                    transition: "transform 0.2s"
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
-            >
-                <Plus size={20} /> New Project
-            </button>
         </div>
 
         {/* Projects Grid */}
-        <h2 style={{ fontSize: "1.2rem", marginBottom: "25px", color: "#ccc", display: "flex", alignItems: "center", gap: "10px" }}>
-            <Clock size={18} /> Recent Projects
-        </h2>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
+            
+            {/* New Project Card */}
+            <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleNewProject}
+                className="group border-2 border-dashed border-border rounded-2xl bg-transparent flex flex-col justify-center items-center cursor-pointer text-muted min-h-[200px] transition-all hover:bg-blue-500/5 hover:border-blue-500 hover:text-foreground"
+            >
+                <div className="bg-card p-4 rounded-full mb-4 group-hover:bg-blue-500/20">
+                    <Plus size={24} className="text-blue-500" />
+                </div>
+                <span className="font-semibold text-base">Create New Project</span>
+            </motion.button>
 
-        {projects.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px", background: "#16161a", borderRadius: "15px", border: "1px dashed #333", color: "#666" }}>
-                <Folder size={48} style={{ marginBottom: "15px", opacity: 0.5 }} />
-                <p style={{ fontSize: "1.1rem" }}>No projects yet. Create one to get started!</p>
-            </div>
-        ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "25px" }}>
-                <AnimatePresence>
-                    {projects.map((p) => (
-                        <motion.div 
-                            key={p.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            layout
-                        >
-                            <Link to={`/editor/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                                <motion.div 
-                                    whileHover={{ y: -5, borderColor: "#007acc", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}
-                                    style={{ 
-                                        padding: "25px", background: "#16161a", borderRadius: "12px", 
-                                        border: "1px solid #222", position: "relative",
-                                        transition: "all 0.2s ease"
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", alignItems: "flex-start" }}>
-                                        <div style={{ background: "rgba(0, 122, 204, 0.1)", padding: "10px", borderRadius: "8px" }}>
-                                            <Folder size={24} color="#007acc" />
+            <AnimatePresence>
+                {filteredProjects.map((p) => (
+                    <motion.div 
+                        key={p.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        layout
+                    >
+                        <Link to={`/editor/${p.id}`} className="block h-full no-underline text-inherit">
+                            <motion.div 
+                                whileHover={{ y: -6 }}
+                                className="p-6 bg-surface rounded-2xl border border-border h-full flex flex-col justify-between hover:shadow-2xl hover:border-zinc-500 transition-all group"
+                            >
+                                <div>
+                                    <div className="flex justify-between mb-5 items-start">
+                                        <div className="bg-foreground/5 p-2.5 rounded-xl">
+                                            <Folder size={20} className="text-muted" />
                                         </div>
-                                        <div style={{ display: "flex" }}>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
                                                 onClick={(e) => startEditing(e, p)}
-                                                style={{ background: "transparent", border: "none", color: "#444", cursor: "pointer", padding: "5px" }}
-                                                title="Rename Project"
+                                                className="p-1.5 rounded-md text-muted hover:bg-foreground hover:text-background transition-colors"
                                             >
-                                                <Edit2 size={16} className="action-icon" />
+                                                <Edit2 size={14} />
                                             </button>
                                             <button 
                                                 onClick={(e) => deleteProject(e, p.id)}
-                                                style={{ background: "transparent", border: "none", color: "#444", cursor: "pointer", padding: "5px" }}
-                                                title="Delete Project"
+                                                className="p-1.5 rounded-md text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors"
                                             >
-                                                <Trash2 size={16} className="trash-icon" />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </div>
 
                                     {editingId === p.id ? (
-                                        <div style={{ marginBottom: "8px", display: "flex", alignItems: "center" }}>
-                                            <input 
-                                                autoFocus
-                                                type="text" 
-                                                value={editName}
-                                                onChange={(e) => setEditName(e.target.value)}
-                                                onClick={(e) => e.preventDefault()}
-                                                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(e); }}
-                                                onBlur={saveEdit}
-                                                style={{ 
-                                                    background: "#0f0f12", border: "1px solid #007acc", color: "white", 
-                                                    padding: "4px 8px", borderRadius: "4px", fontSize: "1.1rem", width: "100%", fontWeight: "600"
-                                                }}
-                                            />
-                                        </div>
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                            onClick={(e) => e.preventDefault()}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(e); }}
+                                            onBlur={saveEdit}
+                                            className="bg-background border border-blue-500 text-foreground px-2 py-1 rounded-md text-lg w-full font-semibold outline-none mb-2"
+                                        />
                                     ) : (
-                                        <h3 style={{ fontSize: "1.2rem", fontWeight: "600", marginBottom: "8px", color: "#e0e0e0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</h3>
+                                        <h3 className="text-lg font-bold mb-2 text-foreground truncate">{p.name}</h3>
                                     )}
-
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#666", marginTop: "15px" }}>
-                                        <span style={{ background: "#222", padding: "4px 8px", borderRadius: "4px" }}>{p.lang}</span>
-                                        <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>{p.time === "Just now" ? "Just now" : formatDate(p.createdAt)}</span>
+                                    <div className="text-sm text-muted flex items-center gap-1.5">
+                                        <Clock size={12} /> Last edited {timeAgo(p.createdAt)}
                                     </div>
-                                </motion.div>
-                            </Link>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
-        )}
+                                </div>
+
+                                <div className="mt-6 pt-5 border-t border-border flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-zinc-400">
+                                        <span className="w-2 h-2 rounded-full" style={{ background: LANG_COLORS[p.lang] || LANG_COLORS["Default"] }}></span>
+                                        {p.lang}
+                                    </div>
+                                    <div className="bg-card rounded-full px-2 py-1">
+                                        <Zap size={12} className="fill-amber-500 text-amber-500" />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </Link>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
+        </div>
       </div>
-      <style>{`
-        .trash-icon:hover { color: #ff4444 !important; }
-        .action-icon:hover { color: #007acc !important; }
-      `}</style>
     </div>
   );
 };

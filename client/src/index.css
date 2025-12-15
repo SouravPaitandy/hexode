@@ -1,3 +1,50 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-card: var(--bg-card);
+  --color-border: var(--border-color);
+
+  --color-foreground: var(--text-main);
+  --color-muted: var(--text-muted);
+  
+  --color-primary: #007acc;
+  --color-primary-hover: #0098ff;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: "Fira Code", monospace;
+}
+
+:root {
+  /* Dark Mode (Default) */
+  --bg-main: #09090b;
+  --bg-surface: #18181b;
+  --bg-card: #27272a;
+  --border-color: #3f3f46;
+  
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+}
+
+[data-theme="light"] {
+  /* Light Mode */
+  --bg-main: #ffffff;
+  --bg-surface: #f8fafc; /* Slate-50 - Cleaner than Zinc-100 */
+  --bg-card: #ffffff;
+  --border-color: #cbd5e1; /* Slate-300 - Better contrast for borders */
+
+  --text-main: #0f172a; /* Slate-900 */
+  --text-muted: #64748b; /* Slate-500 - more readable */
+}
+
+@theme {
+   /* ... existing variables ... */
+   --color-accent: var(--bg-surface); /* fallback */
+}
+
 * {
   box-sizing: border-box;
 }
@@ -6,7 +53,33 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'Inter', sans-serif;
-  background-color: #1e1e1e;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s, color 0.3s;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color); 
+  border-radius: 5px;
+  border: 2px solid var(--bg-surface);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted); 
+}
+
+/* Selection Color */
+::selection {
+  background: rgba(0, 122, 204, 0.3);
   color: white;
 }
 
@@ -22,4 +95,14 @@ body {
 /* Hide default cursor bits we don't control */
 .yRemoteSelectionHead::before {
     display: none; 
+}
+
+
+/* Utilities */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

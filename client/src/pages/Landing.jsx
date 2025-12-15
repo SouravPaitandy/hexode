@@ -1,246 +1,298 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Code2, Cpu, Users, Zap, Terminal, Globe, Layout, Shield, Github, Twitter, Linkedin, Heart } from 'lucide-react';
+import { 
+    Code2, Users, Terminal, Globe, Layout, Github,
+    ArrowRight, Sparkles, ChevronRight, Zap, Cloud, Cpu, Server, CheckCircle,
+    Star
+} from 'lucide-react';
+
+// ... imports
+import ThemeToggle from '../components/ThemeToggle';
 
 const Landing = () => {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
+    const { scrollY } = useScroll();
+    const y1 = useTransform(scrollY, [0, 700], [0, 100]);
+    const opacity = useTransform(scrollY, [0, 350, 700], [0.3, 1, 0]);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0 }
-  };
+    const [typedText, setTypedText] = useState("");
+    const fullText = "print('Hello, Reviewer!')";
 
-  return (
-    <div style={{ background: "#0f0f12", minHeight: "100vh", color: "white", fontFamily: "'Inter', sans-serif", overflowX: "hidden", position: "relative" }}>
-      
-      {/* Background Grid Pattern */}
-      <div style={{
-          position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0,
-          backgroundImage: "linear-gradient(#222 1px, transparent 1px), linear-gradient(90deg, #222 1px, transparent 1px)",
-          backgroundSize: "60px 60px", opacity: 0.15, maskImage: "linear-gradient(to bottom, white 20%, transparent 90%)"
-      }}></div>
+    useEffect(() => {
+        let i = 0;
+        const interval = setInterval(() => {
+            setTypedText(fullText.slice(0, i + 1));
+            i++;
+            if (i > fullText.length) {
+                i = 0; 
+                setTimeout(() => setTypedText(""), 2000); 
+            }
+        }, 150);
+        return () => clearInterval(interval);
+    }, []);
 
-      {/* Navbar */}
-      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 50px", backdropFilter: "blur(12px)", background: "rgba(22, 22, 26, 0.7)", position: "fixed", top: 0, zIndex: 100, width: "100%", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "1.5rem", fontWeight: "bold", zIndex: 10 }}>
-          <motion.div 
-            whileHover={{ rotate: 10 }}
-            style={{ background: "linear-gradient(135deg, #007acc, #00d4ff)", padding: "10px", borderRadius: "10px", display: "flex", boxShadow: "0 4px 20px rgba(0, 122, 204, 0.3)" }}
-          >
-             <Code2 size={22} color="white" />
-          </motion.div>
-          <span>DevDock</span>
-        </div>
-        <div style={{ display: "flex", gap: "30px", alignItems: "center", fontSize: "0.95rem" }}>
-           {/* Links */}
-           <div style={{ display: "flex", gap: "20px" }}>
-               {['Features', 'How it Works', 'Community'].map(item => (
-                   <a key={item} href={`#${item.toLowerCase().replace(/ /g, '-')}`} style={{ color: "#8892b0", textDecoration: "none", fontWeight: "500", transition: "color 0.2s" }} onMouseOver={e => e.target.style.color = "white"} onMouseOut={e => e.target.style.color = "#8892b0"}>{item}</a>
-               ))}
-           </div>
-           
-           <div style={{ width: "1px", height: "24px", background: "#333" }}></div>
-
-           <a href="https://github.com" target="_blank" style={{ display: "flex", alignItems: "center", gap: "8px", color: "white", textDecoration: "none" }}>
-               <Github size={20} />
-               <span style={{ fontSize: "0.9rem", color: "#8892b0" }}>Star on GitHub</span>
-           </a>
-
-           <Link to="/dashboard" style={{ padding: "10px 24px", background: "#007acc", color: "white", textDecoration: "none", borderRadius: "8px", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 0 15px rgba(0, 122, 204, 0.2)" }} onMouseOver={e => e.target.style.transform = "translateY(-1px)"} onMouseOut={e => e.target.style.transform = "translateY(0)"}>
-               Launch IDE
-           </Link>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section style={{ padding: "140px 50px 80px", textAlign: "center", maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <motion.div variants={itemVariants} style={{ display: "flex", justifyContent: "center", marginBottom: "30px" }}>
-                <span style={{ padding: "8px 16px", background: "rgba(0, 122, 204, 0.08)", color: "#00d4ff", borderRadius: "30px", fontSize: "0.9rem", fontWeight: "600", border: "1px solid rgba(0, 122, 204, 0.2)", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ display: "block", width: "8px", height: "8px", background: "#00d4ff", borderRadius: "50%", boxShadow: "0 0 10px #00d4ff" }}></span> 
-                    V1.0 Public Beta is Live
-                </span>
-            </motion.div>
+    return (
+        <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden selection:bg-blue-500/30">
             
-            <motion.h1 variants={itemVariants} style={{ fontSize: "5rem", fontWeight: "800", lineHeight: "1.1", marginBottom: "30px", letterSpacing: "-2px" }}>
-              Code Together. <br />
-              <span style={{ background: "linear-gradient(90deg, #fff 20%, #8892b0 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Ship Automatically.</span>
-            </motion.h1>
-            
-            <motion.p variants={itemVariants} style={{ fontSize: "1.3rem", color: "#8892b0", maxWidth: "650px", margin: "0 auto 40px", lineHeight: "1.6" }}>
-              The collaborative cloud IDE that feels local. Spin up ephemeral environments in <span style={{color: "white"}}>milliseconds</span>.
-            </motion.p>
-    
-            <motion.div variants={itemVariants} style={{ display: "flex", gap: "20px", justifyContent: "center" }}>
-                 <Link to="/dashboard" style={{ padding: "18px 48px", background: "white", color: "black", textDecoration: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "1.1rem", border: "1px solid white", transition: "all 0.2s", boxShadow: "0 0 40px rgba(255,255,255,0.1)" }}>Start Coding Free</Link>
-                 <a href="https://github.com" target="_blank" style={{ padding: "18px 48px", background: "transparent", border: "1px solid #333", color: "white", textDecoration: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "1.1rem", backdropFilter: "blur(5px)" }}>View Documentation</a>
-            </motion.div>
-        </motion.div>
-      </section>
+            {/* Background Gradients */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[800px] h-[800px] bg-indigo-900/10 rounded-full blur-[100px]" />
+            </div>
 
-      {/* Trusted By Strip */}
-      <section style={{ padding: "40px 0", borderTop: "1px solid #222", borderBottom: "1px solid #222", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(5px)", marginBottom: "80px" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
-              <p style={{ color: "#666", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "25px" }}>Trusted by developers from</p>
-              <div style={{ display: "flex", justifyContent: "center", gap: "60px", color: "#444", fontWeight: "bold", fontSize: "1.5rem", flexWrap: "wrap", opacity: 0.7 }}>
-                  {['ACME Corp', 'Globex', 'Soylent', 'Umbrella', 'Stark Ind'].map(name => (
-                      <span key={name} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                         <Globe size={20} /> {name}
-                      </span>
-                  ))}
-              </div>
-          </div>
-      </section>
+            {/* Navbar */}
+            <nav className="fixed top-0 w-full z-50 border-b border-border bg-surface/70 backdrop-blur-xl supports-backdrop-filter:bg-surface/60">
+                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
+                        <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
+                            <Code2 size={20} className="text-gray-200" />
+                        </div>
+                        <span>DevDock</span>
+                    </div>
+                    
+                    <div className="hidden md:flex gap-8 text-sm font-medium text-muted">
+                        {['Architecture', 'Features', 'Source'].map(item => (
+                            <a key={item} href={`#${item.toLowerCase().replace(" ", "-")}`} className="hover:text-foreground transition-colors">
+                                {item}
+                            </a>
+                        ))}
+                    </div>
 
-      {/* Mock IDE Visual */}
-      <section style={{ maxWidth: "1000px", margin: "0 auto 100px", padding: "0 20px" }}>
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            style={{ borderRadius: "15px", border: "1px solid #333", overflow: "hidden", boxShadow: "0 20px 80px rgba(0,0,0,0.5)", background: "#1e1e1e" }}
-          >
-              <div style={{ height: "40px", background: "#252526", display: "flex", alignItems: "center", gap: "8px", padding: "0 15px", borderBottom: "1px solid #333" }}>
-                  <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ff5f56" }}></div>
-                  <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#ffbd2e" }}></div>
-                  <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#27c93f" }}></div>
-                  <div style={{ marginLeft: "20px", color: "#8892b0", fontSize: "0.8rem", fontFamily: "monospace" }}>main.py - DevDock</div>
-              </div>
-              <div style={{ padding: "30px", fontFamily: "'Fira Code', monospace", fontSize: "1.1rem", color: "#e0e0e0", display: "flex" }}>
-                  <div style={{ color: "#444", userSelect: "none", marginRight: "20px" }}>
-                      1<br/>2<br/>3<br/>4<br/>5
-                  </div>
-                  <div>
-                      <span style={{ color: "#c586c0" }}>def</span> <span style={{ color: "#dcdcaa" }}>fibonacci</span>(n):<br/>
-                      &nbsp;&nbsp;&nbsp;&nbsp;<span style={{ color: "#c586c0" }}>if</span> n {"<="} 1: <span style={{ color: "#c586c0" }}>return</span> n<br/>
-                      &nbsp;&nbsp;&nbsp;&nbsp;<span style={{ color: "#c586c0" }}>return</span> <span style={{ color: "#dcdcaa" }}>fibonacci</span>(n-1) + <span style={{ color: "#dcdcaa" }}>fibonacci</span>(n-2)<br/>
-                      <br/>
-                      <span style={{ color: "#6a9955" }}># Your code runs instantly here 🚀</span>
-                  </div>
-              </div>
-          </motion.div>
-      </section>
+                    <div className="flex items-center gap-4">
+                        <ThemeToggle />
+                        <Link to="/dashboard" className="bg-white dark:bg-white text-black px-5 py-2 rounded-full font-medium hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 hidden md:block">
+                            Get Started
+                        </Link>
+                    </div>
+                </div>
+            </nav>
 
-      {/* Stats/Badges */}
-      <section style={{ borderTop: "1px solid #222", borderBottom: "1px solid #222", padding: "40px 0", background: "#16161a" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: "40px", textAlign: "center" }}>
-              <div><h3 style={{ fontSize: "2.5rem", fontWeight: "800", color: "white" }}>0ms</h3><p style={{ color: "#8892b0" }}>Typing Latency</p></div>
-              <div><h3 style={{ fontSize: "2.5rem", fontWeight: "800", color: "white" }}>4+</h3><p style={{ color: "#8892b0" }}>Languages Supported</p></div>
-              <div><h3 style={{ fontSize: "2.5rem", fontWeight: "800", color: "white" }}>100%</h3><p style={{ color: "#8892b0" }}>Browser Based</p></div>
-          </div>
-      </section>
-
-      {/* Features Grid */}
-      <section id="features" style={{ padding: "100px 50px", maxWidth: "1200px", margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: "80px" }}>
-            <h2 style={{ fontSize: "3rem", fontWeight: "bold", marginBottom: "20px" }}>Everything you need.</h2>
-            <p style={{ color: "#8892b0", fontSize: "1.2rem" }}>Not just an editor. A complete platform.</p>
-        </div>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "30px" }}>
-            {[
-                { icon: <Users size={40} color="#007acc" />, title: "Real-Time Collab", desc: "Code with your team as if you're on the same computer. See cursors and edits live." },
-                { icon: <Globe size={40} color="#ffaa00" />, title: "Cloud Execution", desc: "Run heavy computations in the cloud. No need to install Python or Java locally." },
-                { icon: <Shield size={40} color="#ff00ff" />, title: "Secure Sandboxes", desc: "Each project runs in an isolated ephemeral environment. Safe and disposable." },
-                { icon: <Terminal size={40} color="#00ff00" />, title: "Integrated Terminal", desc: "Get instant feedback from your code execution. Full standardized output." },
-                { icon: <Layout size={40} color="#00d4ff" />, title: "Project Management", desc: "Organize your work into projects. Persisted locally for your convenience." },
-                { icon: <Code2 size={40} color="#ff5f56" />, title: "Intelligent Editor", desc: "Powered by Monaco (VS Code). Syntax highlighting, formatting, and more." },
-            ].map((feature, i) => (
+            {/* Hero Section */}
+            <section className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto text-center z-10">
                 <motion.div 
-                    key={i}
-                    whileHover={{ y: -5, borderColor: "#333" }}
-                    style={{ padding: "40px", background: "#111", borderRadius: "16px", border: "1px solid #222", transition: "all 0.2s" }}
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ duration: 0.6 }}
                 >
-                    <div style={{ marginBottom: "25px", background: "rgba(255,255,255,0.03)", width: "fit-content", padding: "15px", borderRadius: "12px" }}>{feature.icon}</div>
-                    <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "15px" }}>{feature.title}</h3>
-                    <p style={{ color: "#8892b0", lineHeight: "1.6", fontSize: "1.05rem" }}>{feature.desc}</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border mb-8 text-xs font-medium text-muted hover:bg-card transition-colors cursor-default">
+                        <span className="relative flex h-2 w-2">
+                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                           <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                        v1.0 Public Beta
+                    </div>
+
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-6 leading-[1.1]">
+                        <span className="inline-block bg-clip-text text-transparent bg-linear-to-b from-[#0f172a] via-[#0f172a] to-[#64748b] dark:from-white dark:via-white dark:to-white/50 pb-2">
+                            Collaborative IDE
+                        </span>
+                        <br />
+                        <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
+                             for the Web.
+                        </span>
+                    </h1>
+
+                    <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
+                        A high-performance cloud code editor featuring <span className="text-foreground font-medium">real-time sync</span>, 
+                        virtual file systems, and instant <span className="text-foreground font-medium">polyglot execution</span>.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
+                        <Link to="/dashboard" className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-gray-300 rounded-xl font-bold text-base shadow-lg shadow-blue-500/25 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
+                            Start Coding Now
+                        </Link>
+                        <a href="https://github.com/souravpaitandy/dev-dock" target="_blank" className="px-8 py-3.5 bg-surface border border-border text-muted hover:text-foreground hover:bg-card rounded-xl font-medium text-base shadow-lg shadow-black/5 dark:shadow-black/50 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
+                            <Star size={18} fill='yellow' className="text-yellow-500"/> Star us on <Github size={18} />
+                        </a>
+                    </div>
                 </motion.div>
-            ))}
+
+                {/* Mock IDE Interface */}
+                <motion.div 
+                    style={{ y: y1, opacity }}
+                    className="relative max-w-5xl mx-auto rounded-xl border border-border bg-surface/50 backdrop-blur-sm shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 overflow-hidden"
+                >
+                    {/* Window Controls */}
+                    <div className="h-10 bg-surface/80 border-b border-border flex items-center px-4 gap-2">
+                        <div className="flex gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                            <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                            <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+                        </div>
+                        <div className="flex-1 text-center text-xs text-muted font-mono">DevDock - Untitled Project</div>
+                    </div>
+
+                    <div className="flex h-[400px] md:h-[500px] text-left">
+                        {/* Mock Sidebar */}
+                        <div className="hidden md:block w-64 border-r border-border p-4 space-y-3 bg-card/30">
+                            <div className="flex items-center gap-2 text-muted text-sm">
+                                <Terminal size={14} /> <span>index.js</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted text-sm">
+                                <Layout size={14} /> <span>style.css</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-2 py-1.5 rounded text-sm border border-emerald-500/20">
+                                <Code2 size={14} /> <span>demo.py</span>
+                            </div>
+                        </div>
+
+                        {/* Code Area */}
+                        <div className="flex-1 p-6 font-mono text-sm md:text-base text-foreground bg-background/50">
+                            <div className="text-purple-400">def <span className="text-yellow-200">main</span>():</div>
+                            <div className="pl-6 text-emerald-600/80 italic"># Your code runs instantly</div>
+                            <div className="pl-6">{typedText}<span className="animate-pulse text-blue-400">|</span></div>
+                        </div>
+                    </div>
+                </motion.div>
+            </section>
+
+            {/* Architecture / Tech Stack */}
+            <section id="architecture" className="py-20 border-y border-border bg-surface/30">
+                <div className="max-w-6xl mx-auto px-6 text-center">
+                    <p className="text-sm font-bold tracking-widest text-muted uppercase mb-10">Powered by Modern Primitives</p>
+                    <div className="flex flex-wrap justify-center gap-6 sm:gap-10 opacity-70">
+                        {['React 18+', 'Node.js', 'Y.js CRDT', 'Vite', 'Monaco', 'MongoDB'].map((tech) => (
+                            <div key={tech} className="flex items-center gap-2 text-muted font-medium">
+                                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
+                                {tech}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Features Grid */}
+            <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl md:text-5xl font-bold mb-4">Code Like a <span className="text-blue-500">Pro</span>.</h2>
+                    <p className="text-muted text-lg">Engineering excellence built into every pixel.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Card 1: Collab (Large) */}
+                    <motion.div 
+                        whileHover={{ y: -5 }}
+                        className="md:col-span-2 p-8 rounded-3xl bg-card/30 border border-border hover:border-blue-500/30 transition-colors relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-all duration-500"></div>
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-6 text-blue-400">
+                                <Users size={24} />
+                            </div>
+                            <h3 className="text-2xl font-bold mb-3">CRDT Multi-User Sync</h3>
+                            <p className="text-muted max-w-md leading-relaxed">
+                                State synchronization powered by <strong>Y.js</strong> and WebSockets. 
+                                Millisecond-latency updates ensuring every keystroke is shared instantly without conflicts.
+                            </p>
+                        </div>
+                    </motion.div>
+
+                    {/* Card 2: Polyglot (Vertical) */}
+                    <motion.div 
+                        whileHover={{ y: -5 }}
+                        className="md:row-span-2 p-8 rounded-3xl bg-card/30 border border-border hover:border-emerald-500/30 transition-colors relative overflow-hidden group"
+                    >
+                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+                        <div className="relative z-10 h-full flex flex-col">
+                            <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-6 text-emerald-400">
+                                <Terminal size={24} />
+                            </div>
+                            <h3 className="text-2xl font-bold mb-3">Polyglot Sandbox</h3>
+                            <p className="text-muted mb-8 flex-1">
+                                Secure remote code execution supporting standard input/output.
+                            </p>
+                            <div className="space-y-3">
+                                {[
+                                    { l: 'Python 3', c: 'text-yellow-400', bg: 'bg-yellow-400/10' }, 
+                                    { l: 'Node.js', c: 'text-green-400', bg: 'bg-green-400/10' }, 
+                                    { l: 'C++', c: 'text-blue-400', bg: 'bg-blue-400/10' }, 
+                                    { l: 'Java', c: 'text-red-400', bg: 'bg-red-400/10' }
+                                ].map((fw) => (
+                                    <div key={fw.l} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
+                                        <div className={`w-2 h-2 rounded-full ${fw.c} ${fw.bg} shadow-[0_0_8px_currentColor]`}></div>
+                                        <span className="font-mono text-sm">{fw.l}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Card 3: File System */}
+                    <motion.div 
+                        whileHover={{ y: -5 }}
+                        className="p-8 rounded-3xl bg-card/30 border border-border hover:border-pink-500/30 transition-colors"
+                    >
+                        <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-6 text-pink-400">
+                            <Layout size={24} />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Virtual File System</h3>
+                        <p className="text-muted text-sm leading-relaxed">
+                            In-memory file tree synced across all connected clients. Create, edit, and reorganize files on the fly.
+                        </p>
+                    </motion.div>
+
+                    {/* Card 4: Architecture */}
+                    <motion.div 
+                        whileHover={{ y: -5 }}
+                        className="p-8 rounded-3xl bg-card/30 border border-border hover:border-amber-500/30 transition-colors"
+                    >
+                        <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-6 text-amber-400">
+                            <Cloud size={24} />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Edge Ready</h3>
+                        <p className="text-muted text-sm leading-relaxed">
+                            Designed to be lightweight. The heavy lifting happens in the browser, while the server coordinates the dance.
+                        </p>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* CTA Section */}
+            <section className="py-32 px-6 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-linear-to-t from-blue-900/10 via-transparent to-transparent"></div>
+                
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }} 
+                    whileInView={{ opacity: 1, scale: 1 }} 
+                    viewport={{ once: true }}
+                    className="relative z-10 max-w-3xl mx-auto"
+                >
+                    <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to build something?</h2>
+                    <p className="text-xl text-muted mb-10">
+                        Join the session and experience the future of collaborative coding.
+                    </p>
+                    <Link to="/dashboard" className="inline-flex items-center gap-2 px-10 py-4 bg-foreground text-background rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(255,255,255,0.3)]">
+                        Launch Editor
+                    </Link>
+                </motion.div>
+            </section>
+
+            {/* Footer */}
+            <footer className="rounded-t-[2.5rem] md:rounded-none border-t border-border bg-surface md:bg-background text-muted text-sm -mt-8 md:mt-0 relative z-20">
+                <div className="max-w-7xl mx-auto px-6 py-12">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+                        <div className="flex items-center gap-2">
+                            <span className="text-foreground font-semibold">DevDock</span>
+                            <span>© {new Date().getFullYear()}</span>
+                        </div>
+                        <div className="flex gap-6">
+                            <a href="https://github.com/souravpaitandy/" className="hover:text-foreground transition-colors">GitHub</a>
+                            <a href="https://x.com/PaitandySourav" className="hover:text-foreground transition-colors">Twitter</a>
+                            <a href="https://github.com/souravpaitandy/dev-dock/blob/main/LICENSE" className="hover:text-foreground transition-colors">License</a>
+                        </div>
+                    </div>
+                    
+                    <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted">
+                        <p>An open-source project. Contributions are welcome!</p>
+                        <p>
+                            Developed by <a href="https://www.souravpaitandy.me" target="_blank" rel="noopener noreferrer" className="text-muted hover:text-foreground transition-colors">Sourav Paitandy</a> with Grit and Passion for developers
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
-      </section>
-
-      {/* CTA Footer */}
-      <section style={{ padding: "100px 20px", textAlign: "center", background: "linear-gradient(180deg, #0f0f12 0%, #001e3c 100%)" }}>
-          <motion.div 
-             initial={{ opacity: 0, scale: 0.9 }}
-             whileInView={{ opacity: 1, scale: 1 }}
-             viewport={{ once: true }}
-          >
-              <h2 style={{ fontSize: "3rem", fontWeight: "bold", marginBottom: "30px" }}>Ready to ship?</h2>
-              <Link to="/dashboard" style={{ padding: "20px 60px", background: "#007acc", color: "white", textDecoration: "none", borderRadius: "50px", fontWeight: "bold", fontSize: "1.3rem", boxShadow: "0 10px 40px rgba(0, 122, 204, 0.5)" }}>
-                  Start Building Now
-              </Link>
-          </motion.div>
-      </section>
-
-      {/* Multi-Column Footer */}
-      <footer style={{ padding: "80px 50px 40px", borderTop: "1px solid #222", background: "#0d0d10", fontSize: "0.9rem" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "60px", marginBottom: "60px" }}>
-              
-              {/* Brand Column */}
-              <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "1.5rem", fontWeight: "bold", marginBottom: "20px" }}>
-                      <div style={{ background: "linear-gradient(135deg, #007acc, #00d4ff)", padding: "8px", borderRadius: "8px" }}>
-                         <Code2 size={24} color="white" />
-                      </div>
-                      <span>DevDock</span>
-                  </div>
-                  <p style={{ color: "#8892b0", lineHeight: "1.6", maxWidth: "300px" }}>
-                      The world's most advanced cloud development environment. Built for teams who ship fast.
-                  </p>
-                  <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
-                      <a href="#" style={{ color: "#666", transition: "color 0.2s" }}><Twitter size={20} /></a>
-                      <a href="#" style={{ color: "#666", transition: "color 0.2s" }}><Github size={20} /></a>
-                      <a href="#" style={{ color: "#666", transition: "color 0.2s" }}><Linkedin size={20} /></a>
-                  </div>
-              </div>
-
-              {/* Links Column 1 */}
-              <div>
-                  <h4 style={{ color: "white", marginBottom: "20px", fontSize: "1rem" }}>Product</h4>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px", color: "#8892b0" }}>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Features</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Integrations</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Pricing</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Changelog</a></li>
-                  </ul>
-              </div>
-
-              {/* Links Column 2 */}
-              <div>
-                  <h4 style={{ color: "white", marginBottom: "20px", fontSize: "1rem" }}>Resources</h4>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px", color: "#8892b0" }}>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Documentation</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>API Reference</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Community</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Blog</a></li>
-                  </ul>
-              </div>
-
-              {/* Links Column 3 */}
-              <div>
-                  <h4 style={{ color: "white", marginBottom: "20px", fontSize: "1rem" }}>Company</h4>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "12px", color: "#8892b0" }}>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>About</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Careers</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Legal</a></li>
-                      <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Contact</a></li>
-                  </ul>
-              </div>
-          </div>
-
-          <div style={{ maxWidth: "1200px", margin: "0 auto", paddingTop: "30px", borderTop: "1px solid #222", display: "flex", justifyContent: "space-between", color: "#444" }}>
-              <div>© 2024 DevDock Inc. All rights reserved.</div>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>Made with <Heart size={14} fill="#ae1f1f" color="#ae1f1f" /> by Sourabh</div>
-          </div>
-      </footer>
-    </div>
-  );
+    );
 };
 
 export default Landing;

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import * as Y from "yjs";
@@ -6,23 +6,53 @@ import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
 import Sidebar from "../components/Sidebar";
 import Chat from "../components/Chat";
-
-import { Play, MessageSquare, Code2, Globe, LayoutGrid } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useToast } from "../components/Toast";
+import IDEHeader from "../components/ide/IDEHeader";
+import TerminalPanel from "../components/ide/TerminalPanel";
+import StatusBar from "../components/ide/StatusBar";
+import { useTheme } from "../context/ThemeContext";
 
 const IDE = () => {
+  const { theme } = useTheme();
+  // ... existing code ...
   const { roomId } = useParams();
   const [editorRef, setEditorRef] = useState(null);
-  const [output, setOutput] = useState([]);
+  const [terminalHistory, setTerminalHistory] = useState([
+    { type: 'system', content: 'Welcome to DevDock Shell' },
+    { type: 'system', content: 'Type "help" for available commands.' }
+  ]);
   const [isRunning, setIsRunning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("terminal"); // terminal | input | console | problems
+  const [stdin, setStdin] = useState("");
   
+  // Mobile / Responsive State
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
+
+  useEffect(() => {
+      const handleResize = () => {
+          const mobile = window.innerWidth < 768;
+          setIsMobile(mobile);
+          if (mobile) setShowSidebar(false);
+          else setShowSidebar(true);
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // File System State
   const [fileName, setFileName] = useState("script.js"); 
-  const [files, setFiles] = useState([]); // List of filenames
+  const [files, setFiles] = useState([]); 
 
   // User State
   const [user, setUser] = useState({ name: "Anonymous", color: "#ccc" });
+
+  const { addToast, removeToast } = useToast();
+
+  // Layout State
+  const [layout, setLayout] = useState({ sidebarW: 250, terminalH: 220, chatW: 300 });
+  const isResizing = useRef(null); // 'sidebar' | 'terminal' | 'chat'
 
   // 1. Initialize Y.js and Provider (Once)
   useEffect(() => {
@@ -37,16 +67,12 @@ const IDE = () => {
     document.head.appendChild(styleSheet);
 
     const ydoc = new Y.Doc();
-    // Use roomId from URL, default to 'monaco-demo' if missing
     const room = roomId || "monaco-demo";
-    // Env var or default to localhost:3001 (Unified Port)
     const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3001"; 
     const provider = new WebsocketProvider(WS_URL, room, ydoc);
 
-    // Set User Awareness
     provider.awareness.setLocalStateField("user", { name: randomName, color: randomColor });
     
-    // Handle Remote Cursors CSS
     provider.awareness.on('change', () => {
         const states = provider.awareness.getStates();
         const myClientId = provider.awareness.clientID;
@@ -61,16 +87,14 @@ const IDE = () => {
         styleSheet.innerText = css;
     });
 
-    // Handle File List Sync
     const yFilesMap = ydoc.getMap("project-files");
     
-    // Helper to Initialize Projects
     const initProject = () => {
         if (yFilesMap.size === 0) {
             const DEMO_CODE = {
-                "demo-python": { name: "main.py", content: "def fib(n):\n    if n <= 1: return n\n    return fib(n-1) + fib(n-2)\n\nprint([fib(i) for i in range(10)])" },
-                "demo-java": { name: "Main.java", content: "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from Java!\");\n    }\n}" },
-                "demo-cpp": { name: "main.cpp", content: "#include <iostream>\n\nint main() {\n    std::cout << \"Hello from C++!\" << std::endl;\n    return 0;\n}" }
+                "demo-python": { name: "main.py", content: "name = input('Enter your name: ')\nprint(f'Hello, {name}!')" },
+                "demo-java": { name: "Main.java", content: "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        System.out.println(\"Enter name: \");\n        if(scanner.hasNext()){ \n            String name = scanner.nextLine();\n            System.out.println(\"Hello \" + name);\n        }\n    }\n}" },
+                "demo-cpp": { name: "main.cpp", content: "#include <iostream>\n#include <string>\n\nint main() {\n    std::string name;\n    std::cout << \"Enter name: \";\n    std::cin >> name;\n    std::cout << \"Hello \" << name << std::endl;\n    return 0;\n}" }
             };
 
             const room = roomId || "monaco-demo";
@@ -80,11 +104,16 @@ const IDE = () => {
                 ydoc.getText(name).insert(0, content);
                 setFileName(name);
             } else {
-                yFilesMap.set("script.js", true);
-                setFileName("script.js");
+                // Default JS Project with folders
+                yFilesMap.set("index.js", true);
+                ydoc.getText("index.js").insert(0, "// Welcome to DevDock!\nconsole.log('Hello World');");
+                
+                yFilesMap.set("src/utils.js", true);
+                ydoc.getText("src/utils.js").insert(0, "export const add = (a, b) => a + b;");
+
+                setFileName("index.js");
             }
         } else {
-             // Set first file as active if none selected
              if (!yFilesMap.has(fileName)) {
                  setFileName(Array.from(yFilesMap.keys())[0]);
              }
@@ -96,10 +125,8 @@ const IDE = () => {
         setFiles(Array.from(yFilesMap.keys()));
     });
     
-    // Brief delay to ensure sync before deciding (optional, but safer)
     setTimeout(initProject, 500);
 
-    // Attach ydoc to window
     window.currentYDoc = ydoc;
     window.currentProvider = provider;
 
@@ -108,9 +135,9 @@ const IDE = () => {
         ydoc.destroy();
         document.head.removeChild(styleSheet);
     };
-  }, [roomId]); // Re-run if roomId changes (though usually component remounts)
+  }, [roomId]); 
 
-  // 2. Bind Editor to CURRENT File (Whenever fileName or editorRef changes)
+  // 2. Bind Editor to CURRENT File 
   useEffect(() => {
     if (!editorRef || !window.currentYDoc || !window.currentProvider) return;
 
@@ -145,12 +172,10 @@ const IDE = () => {
       if (window.currentYDoc) {
           const map = window.currentYDoc.getMap("project-files");
           map.delete(name);
-          
           if (fileName === name) {
-              // Switch to another file if available
               const keys = Array.from(map.keys());
               if (keys.length > 0) setFileName(keys[0]);
-              else setFileName("script.js"); // Fallback
+              else setFileName("script.js"); 
           }
       }
   };
@@ -159,14 +184,9 @@ const IDE = () => {
       if (window.currentYDoc && oldName !== newName) {
           const map = window.currentYDoc.getMap("project-files");
           const oldContent = window.currentYDoc.getText(oldName).toString();
-          
-          // Create new file with old content
           map.set(newName, true);
           window.currentYDoc.getText(newName).insert(0, oldContent);
-          
-          // Delete old
           map.delete(oldName);
-          
           if (fileName === oldName) setFileName(newName);
       }
   };
@@ -177,134 +197,208 @@ const IDE = () => {
       if (filename.endsWith('.java')) return 'java';
       if (filename.endsWith('.c')) return 'c';
       if (filename.endsWith('.cpp')) return 'cpp';
-      return 'javascript'; // default
+      return 'javascript';
   };
+
+  // Resize Handlers
+  const startResizing = (direction) => (e) => {
+      isResizing.current = direction;
+      document.body.style.cursor = direction === 'terminal' ? 'row-resize' : 'col-resize';
+      document.body.style.userSelect = 'none'; // Prevent text selection
+  };
+
+  const stopResizing = useCallback(() => {
+      isResizing.current = null;
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+  }, []);
+
+  const onMouseMove = useCallback((e) => {
+      if (!isResizing.current) return;
+
+      if (isResizing.current === 'sidebar') {
+          const newW = e.clientX;
+          if (newW > 150 && newW < 600) setLayout(prev => ({ ...prev, sidebarW: newW }));
+      }
+      if (isResizing.current === 'chat') {
+          const newW = window.innerWidth - e.clientX;
+          if (newW > 250 && newW < 600) setLayout(prev => ({ ...prev, chatW: newW }));
+      }
+      if (isResizing.current === 'terminal') {
+          const newH = window.innerHeight - e.clientY;
+          if (newH > 100 && newH < window.innerHeight - 100) setLayout(prev => ({ ...prev, terminalH: newH }));
+      }
+  }, []);
+
+  useEffect(() => {
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', stopResizing);
+      return () => {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', stopResizing);
+      };
+  }, [onMouseMove, stopResizing]);
 
   const runCode = async () => {
     if (!editorRef) return;
     setIsRunning(true);
-    setOutput([]); 
+    // setOutput(["Running..."]); // REMOVED
+    setActiveTab("terminal");
+    // setTerminalHistory(prev => [...prev, { type: 'system', content: 'Running...' }]); // Wait for response
+    
+    // Toast: Started
+    const toastId = addToast("Executing code...", "loading", 0);
 
     const code = editorRef.getValue();
     const lang = getLanguage(fileName);
+    
+    // Log for debugging
+    console.log(`[EXEC] Sending Request: Language=${lang}`); 
 
     try {
       const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
       const response = await fetch(`${BASE_URL}/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language: lang }),
+        body: JSON.stringify({ code, language: lang, stdin: stdin }),
       });
 
       const data = await response.json();
+      
+      // Remove loading toast
+      removeToast(toastId);
+
       if (data.run) {
           const lines = data.run.output?.split("\n") || [];
-          setOutput(lines);
+          setTerminalHistory(prev => [...prev, { type: 'system', content: '> Executing code...' }]);
+          lines.forEach(line => {
+             setTerminalHistory(prev => [...prev, { type: 'output', content: line }]);
+          });
+          
+          addToast("Execution Successful", "success", 2000);
+          
       } else {
-          setOutput(["Error: Execution failed", data.message || "Unknown error"]);
+          setTerminalHistory(prev => [...prev, 
+            { type: 'error', content: "Execution failed" },
+            { type: 'error', content: data.message || "Unknown error" }
+          ]);
+          addToast("Execution Failed", "error", 4000);
       }
     } catch (error) {
-      setOutput([`Error: ${error.message}`]);
+      removeToast(toastId);
+      setTerminalHistory(prev => [...prev, 
+        { type: 'error', content: `Error: ${error.message}` },
+        { type: 'error', content: "Check server logs for details." }
+      ]);
+      addToast("Network Error", "error", 4000);
     } finally {
       setIsRunning(false);
     }
   };
 
+  const handleTerminalCommand = (cmd) => {
+      const trimmed = cmd.trim();
+      if (!trimmed) return;
+
+      // Add command to history
+      setTerminalHistory(prev => [...prev, { type: 'command', content: trimmed, user: user.name }]);
+
+      const [command, ...args] = trimmed.split(' ');
+
+      switch (command) {
+          case 'clear':
+              setTerminalHistory([]);
+              break;
+          case 'help':
+              setTerminalHistory(prev => [...prev, { type: 'system', content: 'Available commands:\n  ls            List files\n  cat <file>    Read file content\n  run           Run current code\n  clear         Clear terminal\n  whoami        Show current user' }]);
+              break;
+          case 'ls':
+              setTerminalHistory(prev => [...prev, { type: 'output', content: files.join('\n') }]);
+              break;
+          case 'whoami':
+                setTerminalHistory(prev => [...prev, { type: 'output', content: user.name }]);
+                break;
+          case 'cat':
+              if (args.length === 0) {
+                  setTerminalHistory(prev => [...prev, { type: 'error', content: 'Usage: cat <filename>' }]);
+              } else {
+                  const targetFile = args[0];
+                  if (window.currentYDoc) {
+                      const yFilesMap = window.currentYDoc.getMap("project-files");
+                      if (yFilesMap.has(targetFile)) {
+                         const content = window.currentYDoc.getText(targetFile).toString();
+                         setTerminalHistory(prev => [...prev, { type: 'output', content: content }]);
+                      } else {
+                          setTerminalHistory(prev => [...prev, { type: 'error', content: `File not found: ${targetFile}` }]);
+                      }
+                  }
+              }
+              break;
+          case 'run':
+              runCode();
+              break;
+          default:
+              setTerminalHistory(prev => [...prev, { type: 'error', content: `Command not found: ${command}` }]);
+      }
+  };
+
   return (
-    <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "#0f0f12", overflow: "hidden", color: "#dfe1e5" }}>
-      {/* Title Bar - VS Code Style */}
-      <header style={{ height: "50px", padding: "0 20px", background: "#16161a", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222" }}>
-        
-        {/* Left: Branding & File Info */}
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", fontSize: "1.1rem" }}>
-                <Code2 size={20} color="#007acc" />
-                <span>DevDock</span>
-            </div>
-            {/* Dashboard Link */}
-            <Link to="/dashboard" style={{ textDecoration: 'none', color: '#8892b0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: '#222', padding: '4px 12px', borderRadius: '4px', border: '1px solid #333' }}>
-                <LayoutGrid size={14} /> Dashboard
-            </Link>
-            <div style={{ height: "20px", width: "1px", background: "#333" }}></div>
-            <span style={{ fontSize: "0.9rem", color: "#8892b0", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Globe size={14} /> {roomId} / {fileName}
-            </span>
-        </div>
-
-        {/* Right: Actions */}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-             <button 
-                onClick={() => setIsChatOpen(!isChatOpen)}
-                style={{ 
-                    background: isChatOpen ? "#222" : "transparent", 
-                    border: "1px solid #333", 
-                    color: isChatOpen ? "#fff" : "#8892b0", 
-                    padding: "6px 12px", 
-                    borderRadius: "6px", 
-                    cursor: "pointer", 
-                    fontSize: "0.85rem",
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: "6px",
-                    transition: "all 0.2s"
-                }}
-                title="Toggle Chat"
-             >
-                <MessageSquare size={16} />
-                {isChatOpen ? "Hide Chat" : "Chat"}
-             </button>
-
-             <button 
-                onClick={runCode}
-                disabled={isRunning}
-                style={{ 
-                    padding: "6px 16px", 
-                    background: isRunning ? "#333" : "#007acc", 
-                    border: "none", 
-                    borderRadius: "6px", 
-                    color: "white", 
-                    cursor: isRunning ? "not-allowed" : "pointer", 
-                    fontSize: "0.85rem",
-                    fontWeight: "600",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    boxShadow: isRunning ? "none" : "0 2px 10px rgba(0, 122, 204, 0.3)",
-                    transition: "all 0.2s"
-                }}
-             >
-                {isRunning ? (
-                    <>Running...</>
-                ) : (
-                    <><Play size={16} fill="white" /> Run Code</>
-                )}
-             </button>
-        </div>
-      </header>
+    <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
+      <IDEHeader 
+        roomId={roomId}
+        fileName={fileName}
+        isChatOpen={isChatOpen}
+        setIsChatOpen={setIsChatOpen}
+        runCode={runCode}
+        isRunning={isRunning}
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+      />
       
       {/* Main Workspace */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className="flex-1 flex overflow-hidden">
         
-        <Sidebar 
-            files={files} 
-            activeFile={fileName} 
-            onSelect={setFileName} 
-            onCreate={handleCreateFile} 
-            onDelete={handleDeleteFile}
-            onRename={handleRenameFile}
-        />
+        {/* Sidebar Container (Desktop: Resizable, Mobile: Drawer) */}
+        {(!isMobile || showSidebar) && (
+            <div 
+                style={{ width: isMobile ? '80%' : layout.sidebarW }} 
+                className={`flex flex-col shrink-0 ${isMobile ? 'fixed inset-y-0 left-0 z-50 shadow-2xl bg-surface' : ''}`}
+            >
+                <Sidebar 
+                    files={files} 
+                    activeFile={fileName} 
+                    onSelect={(f) => { setFileName(f); if(isMobile) setShowSidebar(false); }} 
+                    onCreate={handleCreateFile} 
+                    onDelete={handleDeleteFile}
+                    onRename={handleRenameFile}
+                />
+            </div>
+        )}
+        
+        {/* Mobile Sidebar Backdrop */}
+        {isMobile && showSidebar && (
+            <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowSidebar(false)} />
+        )}
 
-        {/* Editor Split */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: "#1e1e1e" }}>
-            {/* Editor */}
-            <div style={{ flex: 1, minHeight: "0" }}>
+        {/* Resizer: Sidebar <-> Editor (Desktop Only) */}
+        {!isMobile && (
+            <div 
+                onMouseDown={startResizing('sidebar')}
+                className="w-1 bg-surface hover:bg-blue-500 cursor-col-resize border-x border-border transition-colors z-10"
+            />
+        )}
+
+        {/* Center: Editor + Terminal */}
+        <div className="flex-1 min-w-0 flex flex-col bg-card">
+            
+            {/* Editor Area */}
+            <div className="flex-1 min-h-0">
                 <Editor
                 height="100%"
                 defaultLanguage={getLanguage(fileName)}
                 language={getLanguage(fileName)} 
                 path={fileName}
                 defaultValue="// Loading..."
-                theme="vs-dark"
+                theme={theme === 'dark' ? "vs-dark" : "light"}
                 onMount={handleEditorDidMount}
                 options={{
                     minimap: { enabled: true },
@@ -317,44 +411,69 @@ const IDE = () => {
                 }}
                 />
             </div>
-            {/* Terminal */}
-            <div style={{ height: "200px", background: "#0f0f12", borderTop: "1px solid #333", display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "8px 20px", background: "#16161a", color: "#8892b0", fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", borderBottom: "1px solid #222", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span>$&gt; Terminal Output</span>
-                </div>
-                <div style={{ flex: 1, padding: "15px 20px", fontFamily: "'Fira Code', monospace", overflowY: "auto", color: "#e0e0e0", fontSize: "0.9rem" }}>
-                    {output.length === 0 && <div style={{color: "#444", fontStyle: "italic"}}>{"> Ready for execution..."}</div>}
-                    {output.map((line, i) => <div key={i} style={{ whiteSpace: "pre-wrap", lineHeight: "1.5" }}>{line === "" ? <br/> : <><span style={{color: "#555"}}>{"> "}</span>{line}</>}</div>)}
-                </div>
-            </div>
+
+            {/* Resizer: Editor <-> Terminal */}
+            <div 
+                onMouseDown={startResizing('terminal')}
+                className="h-1 bg-surface hover:bg-blue-500 cursor-row-resize border-y border-border transition-colors z-10"
+            />
+
+            {/* Terminal Area */}
+            <TerminalPanel 
+                height={layout.terminalH}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                history={terminalHistory}           // Changed prop
+                onCommand={handleTerminalCommand}   // New prop
+                stdin={stdin}
+                setStdin={setStdin}
+                user={user}
+                roomId={roomId}
+            />
         </div>
 
-        {/* Chat Panel */}
+        {/* Chat Resizer (only if open) */}
         {isChatOpen && (
-            <Chat 
-                ydoc={window.currentYDoc} 
-                provider={window.currentProvider} 
-                username={user.name} 
-                color={user.color} 
+            <div 
+                onMouseDown={startResizing('chat')}
+                className="w-1 bg-surface hover:bg-blue-500 cursor-col-resize border-l border-border transition-colors z-10"
             />
+        )}
+
+        {/* Chat Panel */}
+        {/* Chat Panel (Desktop: Resizable, Mobile: Drawer) */}
+        {isChatOpen && (
+            <>
+                <div 
+                    style={{ width: isMobile ? '85%' : layout.chatW }} 
+                    className={`shrink-0 ${isMobile ? 'fixed inset-y-0 right-0 z-50 shadow-2xl bg-surface border-l border-border' : ''}`}
+                >
+                    <Chat 
+                        ydoc={window.currentYDoc} 
+                        provider={window.currentProvider} 
+                        username={user.name} 
+                        color={user.color} 
+                        onClose={() => setIsChatOpen(false)}
+                    />
+                </div>
+                {/* Mobile Chat Backdrop */}
+                {isMobile && (
+                    <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={() => setIsChatOpen(false)} />
+                )}
+            </>
         )}
 
       </div>
       
       {/* Status Bar */}
-      <div style={{ height: "25px", background: "#007acc", color: "white", display: "flex", alignItems: "center", padding: "0 15px", fontSize: "0.75rem", justifyContent: "space-between", fontWeight: "500" }}>
-        <div style={{display: "flex", gap: "20px"}}>
-            <span style={{display: "flex", alignItems: "center", gap: "5px"}}>🌱 {files.length} Files</span>
-            <span style={{display: "flex", alignItems: "center", gap: "5px"}}>👤 {user.name}</span>
-        </div>
-        <div style={{display: "flex", gap: "20px"}}>
-            <span>{fileName.endsWith('py') ? 'Python 3.10' : fileName.endsWith('.java') ? 'Java 15' : fileName.endsWith('.cpp') ? 'C++ 10.2 (g++)' : fileName.endsWith('.js') ? 'JavaScript (Node 18)' : fileName.endsWith('.c') ? 'C 10.2 (gcc)' : 'Unknown'}</span>
-            <span>UTF-8</span>
-            <span>Connected</span>
-        </div>
-      </div>
+      <StatusBar 
+        fileCount={files.length} 
+        username={user.name} 
+        fileName={fileName} 
+      />
+      
     </div>
   );
-}
+};
 
 export default IDE;
