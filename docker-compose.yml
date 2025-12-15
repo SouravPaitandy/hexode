@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  devdock-server:
+    build: ./server
+    container_name: devdock-server
+    ports:
+      - "3001:3001" # API
+      - "1234:1234" # WebSocket
+    environment:
+      - PISTON_URL=https://emkc.org/api/v2/piston/execute
+    networks:
+      - devdock-network
+
+  devdock-client:
+    build: ./client
+    container_name: devdock-client
+    ports:
+      - "80:80"
+    depends_on:
+      - devdock-server
+    networks:
+      - devdock-network
+
+networks:
+  devdock-network:
+    driver: bridge
