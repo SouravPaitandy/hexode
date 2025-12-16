@@ -34,7 +34,7 @@ const TerminalPanel = ({ height, activeTab, setActiveTab, history, onCommand, st
                 className={`px-4 py-2 text-xs font-medium border-t-2 flex items-center gap-1.5 cursor-pointer select-none transition-colors
                     ${activeTab === "input" ? "bg-card border-blue-500 text-foreground" : "bg-transparent border-transparent text-muted hover:text-foreground"}`}
             >
-                <Keyboard size={12} /> STDIN {stdin.length > 0 && <span className="text-[10px] bg-zinc-700 px-1 rounded ml-1 text-foreground">{stdin.length}</span>}
+                <Keyboard size={12} /> STDIN {stdin.length > 0 && <span className="text-[10px] dark:bg-zinc-700 bg-zinc-200 px-1 rounded ml-1 text-foreground">{stdin.length}</span>}
             </button>
             <button 
                 onClick={() => setActiveTab("console")}
@@ -48,7 +48,7 @@ const TerminalPanel = ({ height, activeTab, setActiveTab, history, onCommand, st
                 className={`px-4 py-2 text-xs font-medium border-t-2 flex items-center gap-1.5 cursor-pointer select-none transition-colors
                     ${activeTab === "problems" ? "bg-card border-blue-500 text-foreground" : "bg-transparent border-transparent text-muted hover:text-foreground"}`}
             >
-                    <AlertCircle size={12} /> PROBLEMS <span className="bg-blue-600 text-foreground px-1 rounded text-[10px]">0</span>
+                    <AlertCircle size={12} /> PROBLEMS <span className="bg-blue-600 dark:text-foreground text-gray-100 px-1 rounded text-[10px]">0</span>
             </button>
         </div>
 
@@ -58,7 +58,7 @@ const TerminalPanel = ({ height, activeTab, setActiveTab, history, onCommand, st
                 <div className="flex flex-col min-h-full">
                     <div className="flex-1 space-y-1">
                         {history.map((entry, i) => (
-                            <div key={i} className="leading-relaxed break-words">
+                            <div key={i} className="leading-relaxed wrap-break-word">
                                 {entry.type === 'command' && (
                                     <div className="text-zinc-400 font-bold mt-2">
                                         <span className="text-green-500">➜</span> <span className="text-blue-400">~</span> <span className="text-foreground">$ {entry.content}</span>
@@ -80,15 +80,15 @@ const TerminalPanel = ({ height, activeTab, setActiveTab, history, onCommand, st
                     
                     {/* Input Line */}
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-                        <span className="text-green-500">➜</span>
-                        <span className="text-blue-400">~</span>
+                        <span className="dark:text-green-500 text-green-700">➜</span>
+                        <span className="dark:text-blue-400 text-blue-600">~</span>
                         <input 
                             autoFocus
                             type="text" 
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="flex-1 bg-transparent border-none outline-none text-zinc-200 placeholder-zinc-600"
+                            className="flex-1 bg-transparent border-none outline-none dark:text-zinc-200 text-black dark:placeholder-zinc-600 placeholder-zinc-700"
                             placeholder="Type a command (ls, cat, run, help)..."
                         />
                     </div>
@@ -101,20 +101,20 @@ const TerminalPanel = ({ height, activeTab, setActiveTab, history, onCommand, st
                         value={stdin}
                         onChange={(e) => setStdin(e.target.value)}
                         placeholder="Enter input values here..."
-                        className="flex-1 bg-zinc-900 border border-border text-zinc-200 p-2 rounded outline-none font-mono text-sm resize-none focus:border-blue-500"
+                        className="flex-1 dark:bg-zinc-900 bg-gray-200 border border-border text-black dark:text-zinc-200 p-2 rounded outline-none font-mono text-sm resize-none focus:border-blue-500"
                     />
                 </div>
             )}
             {activeTab === "console" && (
-                <div className="text-zinc-400 text-xs">
+                <div className="dark:text-zinc-400 text-zinc-800 text-xs">
                         <div>[System] Connected to DevDock Server v1.0</div>
                         <div>[System] Session ID: {Math.floor(Math.random() * 999999)}</div>
-                        <div>[Collab] User '{user.name}' joined room '{roomId}'</div>
+                        <div>[Collab] User '{user?.name || "Guest"}' joined room '{roomId}'</div>
                 </div>
             )}
             {activeTab === "problems" && (
                 <div className="text-muted text-sm flex items-center gap-2 justify-center h-full">
-                        <CheckCircle2 size={32} className="text-green-500" />
+                        <CheckCircle2 size={32} className="dark:text-green-500 text-green-700" />
                         <span>No problems detected in workspace.</span>
                 </div>
             )}

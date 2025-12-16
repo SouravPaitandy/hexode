@@ -3,7 +3,8 @@ import { FileCode, FileJson, FileType, File, Plus, Trash2, Edit2, ChevronDown, C
 import { buildFileTree } from '../utils/fileSystem';
 
 // --- Recursive File Node ---
-const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSelect, onRename, onDelete, hoveredFile, setHoveredFile, editingFile, setEditingFile, editName, setEditName, handleRenameSubmit }) => {
+// --- Recursive File Node ---
+const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSelect, onRename, onDelete, hoveredFile, setHoveredFile, editingFile, setEditingFile, editName, setEditName, handleRenameSubmit, isCreating, creationPath, setCreationPath, setIsCreating, newName, setNewName, handleCreateSubmit, isViewMode }) => {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = activeFile === node.path;
     
@@ -39,7 +40,7 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
         <div>
             <div 
                 className={`flex items-center gap-1.5 py-1 pr-2 cursor-pointer transition-colors text-sm
-                    ${isSelected ? "bg-card text-foreground border-l-2 border-blue-500" : "text-zinc-400 border-l-2 border-transparent hover:bg-card/50 hover:text-zinc-300"}
+                    ${isSelected ? "bg-card text-foreground border-l-2 border-blue-500" : "text-muted border-l-2 border-transparent hover:bg-card hover:text-foreground"}
                 `}
                 style={{ paddingLeft: `${depth * 12 + 12}px` }}
                 onClick={handleClick}
@@ -71,7 +72,7 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                                 onBlur={handleRenameSubmit}
-                                className="w-full bg-zinc-900 border border-blue-500 text-foreground px-1 py-0.5 rounded-sm outline-none text-xs"
+                                className="w-full bg-surface border border-blue-500 text-foreground px-1 py-0.5 rounded-sm outline-none text-xs"
                             />
                         </form>
                     ) : (
@@ -80,8 +81,36 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
                 </div>
 
                 {/* Actions */}
-                {hoveredFile === node.path && editingFile !== node.path && (
-                    <div className="flex gap-1 shrink-0 bg-surface pl-2">
+                {hoveredFile === node.path && editingFile !== node.path && !isViewMode && (
+                    <div className="flex gap-1 shrink-0 bg-transparent pl-2">
+                        {node.type === 'folder' && (
+                             <>
+                                <button 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setIsCreating('file'); 
+                                        setCreationPath(node.path); 
+                                        if (!expandedFolders.has(node.path)) toggleFolder(node.path);
+                                    }} 
+                                    className="bg-transparent border-none cursor-pointer text-muted hover:text-foreground p-0.5"
+                                    title="New File Inside"
+                                >
+                                    <Plus size={12} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setIsCreating('folder'); 
+                                        setCreationPath(node.path); 
+                                        if (!expandedFolders.has(node.path)) toggleFolder(node.path);
+                                    }} 
+                                    className="bg-transparent border-none cursor-pointer text-muted hover:text-foreground p-0.5"
+                                    title="New Folder Inside"
+                                >
+                                    <FolderPlus size={12} />
+                                </button>
+                             </>
+                        )}
                          <button 
                             onClick={startRenaming} 
                             className="bg-transparent border-none cursor-pointer text-muted hover:text-foreground p-0.5"
@@ -101,9 +130,36 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
             </div>
 
             {/* Children (Recursive) */}
-            {node.type === 'folder' && isExpanded && node.children && (
+            {node.type === 'folder' && isExpanded && (
                 <div>
-                    {node.children.map(child => (
+                     {/* Inline Creation Input */}
+                     {isCreating && creationPath === node.path && (
+                         <div className="pl-3 py-1">
+                             <div className="flex items-center gap-1.5" style={{ paddingLeft: `${(depth + 1) * 12 + 12}px` }}>
+                                {isCreating === 'folder' ? <Folder size={14} className="text-blue-400" /> : <File size={14} className="text-muted" />}
+                                <form onSubmit={handleCreateSubmit} className="flex-1">
+                                    <input 
+                                        autoFocus
+                                        type="text" 
+                                        placeholder={isCreating === 'folder' ? "folder name" : "filename.js"}
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Escape') {
+                                                setIsCreating(false);
+                                                setNewName("");
+                                            }
+                                        }}
+                                        onBlur={() => { setIsCreating(false); setNewName(""); }} 
+                                        className="w-full bg-card border border-blue-500 text-foreground px-1.5 py-0.5 rounded-sm outline-none text-xs"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </form>
+                            </div>
+                         </div>
+                     )}
+
+                    {node.children && node.children.map(child => (
                         <FileNode 
                             key={child.path} 
                             node={child} 
@@ -121,6 +177,14 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
                             editName={editName}
                             setEditName={setEditName}
                             handleRenameSubmit={handleRenameSubmit}
+                            isCreating={isCreating}
+                            creationPath={creationPath}
+                            setCreationPath={setCreationPath}
+                            setIsCreating={setIsCreating}
+                            newName={newName}
+                            setNewName={setNewName}
+                            handleCreateSubmit={handleCreateSubmit}
+                            isViewMode={isViewMode}
                         />
                     ))}
                 </div>
@@ -130,7 +194,7 @@ const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSe
 };
 
 
-const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) => {
+const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename, isViewMode }) => {
   const [isCreating, setIsCreating] = useState(false); // false | 'file' | 'folder'
   const [creationPath, setCreationPath] = useState(""); // where to create
   const [newName, setNewName] = useState("");
@@ -193,24 +257,26 @@ const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) 
 
   return (
     <div className="w-full h-full bg-surface border-r border-border flex flex-col text-muted select-none">
-      <div className="px-4 py-3 text-xs font-bold uppercase tracking-widest flex justify-between items-center text-muted bg-dark border-b border-border">
+      <div className="px-4 py-3 text-xs font-bold uppercase tracking-widest flex justify-between items-center text-muted bg-surface border-b border-border">
         <span className="flex items-center gap-1.5"><ChevronDown size={14} /> EXPLORER</span>
-        <div className="flex gap-1">
-             <button 
-                onClick={() => { setIsCreating('file'); setCreationPath(""); }}
-                className="text-muted hover:text-foreground hover:bg-zinc-700/50 p-1 rounded transition-colors"
-                title="New File"
-            >
-                <Plus size={14} />
-            </button>
-             <button 
-                onClick={() => { setIsCreating('folder'); setCreationPath(""); }}
-                className="text-muted hover:text-foreground hover:bg-zinc-700/50 p-1 rounded transition-colors"
-                title="New Folder"
-            >
-                <FolderPlus size={14} />
-            </button>
-        </div>
+        {!isViewMode && (
+            <div className="flex gap-1">
+                <button 
+                    onClick={() => { setIsCreating('file'); setCreationPath(""); }}
+                    className="text-muted hover:text-foreground hover:bg-card p-1 rounded transition-colors"
+                    title="New File"
+                >
+                    <Plus size={14} />
+                </button>
+                <button 
+                    onClick={() => { setIsCreating('folder'); setCreationPath(""); }}
+                    className="text-muted hover:text-foreground hover:bg-card p-1 rounded transition-colors"
+                    title="New Folder"
+                >
+                    <FolderPlus size={14} />
+                </button>
+            </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pt-2">
@@ -225,8 +291,14 @@ const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) 
                         placeholder={isCreating === 'folder' ? "folder name" : "filename.js"}
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        onBlur={() => setIsCreating(false)} 
-                        className="w-full bg-card border border-blue-500 text-foreground px-1.5 py-0.5 rounded-sm outline-none text-xs"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                                setIsCreating(false);
+                                setNewName("");
+                            }
+                        }}
+                        onBlur={() => { setIsCreating(false); setNewName(""); }} 
+                        className="w-full bg-surface border border-blue-500 text-foreground px-1.5 py-0.5 rounded-sm outline-none text-xs"
                     />
                 </form>
             </div>
@@ -254,6 +326,15 @@ const Sidebar = ({ files, activeFile, onSelect, onCreate, onDelete, onRename }) 
                 editName={editName}
                 setEditName={setEditName}
                 handleRenameSubmit={handleRenameSubmit}
+                
+                isCreating={isCreating}
+                creationPath={creationPath}
+                setCreationPath={setCreationPath}
+                setIsCreating={setIsCreating}
+                newName={newName}
+                setNewName={setNewName}
+                handleCreateSubmit={handleCreateSubmit}
+                isViewMode={isViewMode}
             />
         ))}
       </div>

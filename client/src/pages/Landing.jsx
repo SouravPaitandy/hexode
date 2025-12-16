@@ -48,7 +48,7 @@ const Landing = () => {
                         <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
                             <Code2 size={20} className="text-gray-200" />
                         </div>
-                        <span>DevDock</span>
+                        <span>Hexode</span>
                     </div>
                     
                     <div className="hidden md:flex gap-8 text-sm font-medium text-muted">
@@ -89,7 +89,7 @@ const Landing = () => {
                         </span>
                         <br />
                         <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-violet-600 dark:from-blue-400 dark:to-violet-400">
-                             for the Web.
+                             Hexode
                         </span>
                     </h1>
 
@@ -120,7 +120,7 @@ const Landing = () => {
                             <div className="w-3 h-3 rounded-full bg-amber-500/80" />
                             <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
                         </div>
-                        <div className="flex-1 text-center text-xs text-muted font-mono">DevDock - Untitled Project</div>
+                        <div className="flex-1 text-center text-xs text-muted font-mono">Hexode - Untitled Project</div>
                     </div>
 
                     <div className="flex h-[400px] md:h-[500px] text-left">
@@ -273,7 +273,7 @@ const Landing = () => {
                 <div className="max-w-7xl mx-auto px-6 py-12">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
                         <div className="flex items-center gap-2">
-                            <span className="text-foreground font-semibold">DevDock</span>
+                            <span className="text-foreground font-semibold">Hexode</span>
                             <span>© {new Date().getFullYear()}</span>
                         </div>
                         <div className="flex gap-6">

@@ -1,5 +1,7 @@
-import { useRef, useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
+import axios from 'axios';
 import Editor from "@monaco-editor/react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
@@ -14,17 +16,53 @@ import { useTheme } from "../context/ThemeContext";
 
 const IDE = () => {
   const { theme } = useTheme();
-  // ... existing code ...
   const { roomId } = useParams();
+  const [searchParams] = useSearchParams();
+  const isViewMode = searchParams.get('mode') === 'view';
+  const { user, isSignedIn, isLoaded } = useUser();
+  const [lastSaved, setLastSaved] = useState(null);
+
   const [editorRef, setEditorRef] = useState(null);
   const [terminalHistory, setTerminalHistory] = useState([
-    { type: 'system', content: 'Welcome to DevDock Shell' },
+    { type: 'system', content: 'Welcome to Hexode Shell' },
     { type: 'system', content: 'Type "help" for available commands.' }
   ]);
   const [isRunning, setIsRunning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("terminal"); // terminal | input | console | problems
   const [stdin, setStdin] = useState("");
+  const [isConnected, setIsConnected] = useState(false);
+  
+  // Autosave Effect (Every 30s if changes & signed in)
+  // Autosave Effect (Every 30s if changes & signed in)
+  useEffect(() => {
+     if (!isSignedIn || isViewMode || !window.currentYDoc) return;
+
+     const interval = setInterval(async () => {
+        try {
+            const ydoc = window.currentYDoc;
+            if (!ydoc) return;
+            
+            const fileMap = ydoc.getMap("project-files");
+            const serializedFiles = {};
+            
+            Array.from(fileMap.keys()).forEach(filename => {
+                serializedFiles[filename] = ydoc.getText(filename).toString();
+            });
+
+             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+             await axios.post(`${API_URL}/api/rooms`, { 
+                roomId, 
+                ownerId: user.id,
+                files: serializedFiles // Send actual content
+            });
+            setLastSaved(new Date());
+            // console.log("Autosaved files to DB");
+        } catch(e) { console.error("Autosave failed", e); }
+     }, 30000); 
+
+     return () => clearInterval(interval);
+  }, [isSignedIn, isViewMode, roomId, user]);
   
   // Mobile / Responsive State
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -46,7 +84,23 @@ const IDE = () => {
   const [files, setFiles] = useState([]); 
 
   // User State
-  const [user, setUser] = useState({ name: "Anonymous", color: "#ccc" });
+  // User State
+  const [guestUser] = useState(() => {
+     const names = ["Captain Code", "Git Guru", "Docker Dave", "React Ranger", "Node Ninja", "Cyber Punk", "Algo Master"];
+     const colors = ["#ff0000", "#00ff00", "#0088ff", "#ff00ff", "#00ffff", "#ffaa00", "#aa00ff"];
+     return {
+        name: names[Math.floor(Math.random() * names.length)] + " #" + Math.floor(Math.random() * 1000),
+        color: colors[Math.floor(Math.random() * colors.length)]
+     };
+  });
+
+  // useMemo to prevent object reference change on every render (which triggers the massive useEffect)
+  const currentUser = useMemo(() => {
+    return isSignedIn && user ? {
+       name: user.fullName || user.firstName || "Dev",
+       color: guestUser.color
+    } : guestUser;
+  }, [isSignedIn, user, guestUser]);
 
   const { addToast, removeToast } = useToast();
 
@@ -56,12 +110,7 @@ const IDE = () => {
 
   // 1. Initialize Y.js and Provider (Once)
   useEffect(() => {
-    const names = ["Captain Code", "Git Guru", "Docker Dave", "React Ranger", "Node Ninja", "Cyber Punk", "Algo Master"];
-    const colors = ["#ff0000", "#00ff00", "#0088ff", "#ff00ff", "#00ffff", "#ffaa00", "#aa00ff"];
-    const randomName = names[Math.floor(Math.random() * names.length)] + " #" + Math.floor(Math.random() * 1000);
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    setUser({ name: randomName, color: randomColor });
+    // setUser({ name: randomName, color: randomColor }); // Legacy logic removed
 
     const styleSheet = document.createElement("style");
     document.head.appendChild(styleSheet);
@@ -71,7 +120,7 @@ const IDE = () => {
     const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3001"; 
     const provider = new WebsocketProvider(WS_URL, room, ydoc);
 
-    provider.awareness.setLocalStateField("user", { name: randomName, color: randomColor });
+    provider.awareness.setLocalStateField("user", currentUser);
     
     provider.awareness.on('change', () => {
         const states = provider.awareness.getStates();
@@ -87,35 +136,59 @@ const IDE = () => {
         styleSheet.innerText = css;
     });
 
+    provider.on('status', event => {
+        if (event.status === 'connected') {
+            setIsConnected(true);
+            // On connect, simple "Autosave" loop if owner
+            if(isSignedIn && !isViewMode) {
+                 // Debounced save could go here, or handled via separate useEffect
+            }
+        } else {
+            setIsConnected(false);
+        }
+    });
+
     const yFilesMap = ydoc.getMap("project-files");
     
-    const initProject = () => {
+    const initProject = async () => {
         if (yFilesMap.size === 0) {
-            const DEMO_CODE = {
-                "demo-python": { name: "main.py", content: "name = input('Enter your name: ')\nprint(f'Hello, {name}!')" },
-                "demo-java": { name: "Main.java", content: "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        System.out.println(\"Enter name: \");\n        if(scanner.hasNext()){ \n            String name = scanner.nextLine();\n            System.out.println(\"Hello \" + name);\n        }\n    }\n}" },
-                "demo-cpp": { name: "main.cpp", content: "#include <iostream>\n#include <string>\n\nint main() {\n    std::string name;\n    std::cout << \"Enter name: \";\n    std::cin >> name;\n    std::cout << \"Hello \" << name << std::endl;\n    return 0;\n}" }
-            };
+            try {
+                // Try fetching from DB first
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                const res = await axios.get(`${API_URL}/api/rooms/${roomId || 'monaco-demo'}`);
+                const dbFiles = res.data?.files;
 
-            const room = roomId || "monaco-demo";
-            if (DEMO_CODE[room]) {
-                const { name, content } = DEMO_CODE[room];
-                yFilesMap.set(name, true);
-                ydoc.getText(name).insert(0, content);
-                setFileName(name);
-            } else {
-                // Default JS Project with folders
-                yFilesMap.set("index.js", true);
-                ydoc.getText("index.js").insert(0, "// Welcome to DevDock!\nconsole.log('Hello World');");
-                
-                yFilesMap.set("src/utils.js", true);
-                ydoc.getText("src/utils.js").insert(0, "export const add = (a, b) => a + b;");
+                if (dbFiles && Object.keys(dbFiles).length > 0) {
+                    console.log("Hydrating from DB...");
+                    Object.entries(dbFiles).forEach(([name, content]) => {
+                        yFilesMap.set(name, true);
+                        const text = ydoc.getText(name);
+                        if (text.toString().length === 0) text.insert(0, content);
+                    });
+                    setFileName(Object.keys(dbFiles)[0]);
+                } else {
+                     // Default / Demo Setup
+                     const room = roomId || "monaco-demo";
+                     // ... existing demo logic ...
+                     yFilesMap.set("index.js", true);
+                     ydoc.getText("index.js").insert(0, "// Welcome to Hexode!\nconsole.log('Hello World');");
+                     
+                     yFilesMap.set("src/utils.js", true);
+                     ydoc.getText("src/utils.js").insert(0, "export const add = (a, b) => a + b;");
 
-                setFileName("index.js");
+                     setFileName("index.js");
+                }
+            } catch (err) {
+                console.error("Failed to hydrate project:", err);
+                 // Fallback to default if DB fails (e.g. offline/new)
+                 yFilesMap.set("index.js", true);
+                 ydoc.getText("index.js").insert(0, "// Welcome to DevDock!\nconsole.log('Hello World');");
+                 setFileName("index.js");
             }
         } else {
              if (!yFilesMap.has(fileName)) {
-                 setFileName(Array.from(yFilesMap.keys())[0]);
+                 const keys = Array.from(yFilesMap.keys());
+                 if (keys.length > 0) setFileName(keys[0]);
              }
         }
         setFiles(Array.from(yFilesMap.keys()));
@@ -135,7 +208,7 @@ const IDE = () => {
         ydoc.destroy();
         document.head.removeChild(styleSheet);
     };
-  }, [roomId]); 
+  }, [roomId, currentUser, isSignedIn, isViewMode]); 
 
   // 2. Bind Editor to CURRENT File 
   useEffect(() => {
@@ -162,6 +235,7 @@ const IDE = () => {
   };
 
   const handleCreateFile = (name) => {
+      if (isViewMode) return; // Prevent changes in view mode
       if (window.currentYDoc) {
           window.currentYDoc.getMap("project-files").set(name, true);
           setFileName(name);
@@ -169,6 +243,7 @@ const IDE = () => {
   };
 
   const handleDeleteFile = (name) => {
+      if (isViewMode) return; // Prevent changes in view mode
       if (window.currentYDoc) {
           const map = window.currentYDoc.getMap("project-files");
           map.delete(name);
@@ -181,6 +256,7 @@ const IDE = () => {
   };
 
   const handleRenameFile = (oldName, newName) => {
+      if (isViewMode) return; // Prevent changes in view mode
       if (window.currentYDoc && oldName !== newName) {
           const map = window.currentYDoc.getMap("project-files");
           const oldContent = window.currentYDoc.getText(oldName).toString();
@@ -255,12 +331,39 @@ const IDE = () => {
     // Log for debugging
     console.log(`[EXEC] Sending Request: Language=${lang}`); 
 
+    // Calculate all files
+    let projectFiles = [];
+    if (window.currentYDoc) {
+        const ydoc = window.currentYDoc;
+        const fileMap = ydoc.getMap("project-files");
+        
+        // Active file MUST be first for Piston to run it as entry point (usually)
+        projectFiles.push({
+            name: fileName,
+            content: code // Use editor content to ensure latest unsaved keystrokes
+        });
+
+        Array.from(fileMap.keys()).forEach(fname => {
+            if (fname !== fileName) {
+                const content = ydoc.getText(fname).toString();
+                projectFiles.push({ name: fname, content });
+            }
+        });
+    } else {
+        // Fallback
+        projectFiles = [{ name: fileName, content: code }];
+    }
+
     try {
       const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
       const response = await fetch(`${BASE_URL}/execute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language: lang, stdin: stdin }),
+        body: JSON.stringify({ 
+            files: projectFiles, 
+            language: lang, 
+            stdin: stdin 
+        }),
       });
 
       const data = await response.json();
@@ -301,7 +404,7 @@ const IDE = () => {
       if (!trimmed) return;
 
       // Add command to history
-      setTerminalHistory(prev => [...prev, { type: 'command', content: trimmed, user: user.name }]);
+      setTerminalHistory(prev => [...prev, { type: 'command', content: trimmed, user: currentUser.name }]);
 
       const [command, ...args] = trimmed.split(' ');
 
@@ -316,7 +419,7 @@ const IDE = () => {
               setTerminalHistory(prev => [...prev, { type: 'output', content: files.join('\n') }]);
               break;
           case 'whoami':
-                setTerminalHistory(prev => [...prev, { type: 'output', content: user.name }]);
+                setTerminalHistory(prev => [...prev, { type: 'output', content: currentUser.name }]);
                 break;
           case 'cat':
               if (args.length === 0) {
@@ -344,18 +447,40 @@ const IDE = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
+      
+      {/* Auth Loading State - Critical for preventing Guest Fallback on Refresh */}
+      {!isLoaded ? (
+          <div className="h-screen w-full flex items-center justify-center bg-background text-foreground">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                  <p className="text-muted">Loading environment...</p>
+              </div>
+          </div>
+      ) : (
+      <>
       <IDEHeader 
         roomId={roomId}
+        user={user}
         fileName={fileName}
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
         runCode={runCode}
         isRunning={isRunning}
         onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        isViewMode={isViewMode}
       />
       
       {/* Main Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Autosave & View Mode logic */}
+      {/* If View Mode, maybe show banner? */}
+      {isViewMode && (
+         <div className="bg-amber-500/10 text-amber-500 px-4 py-1 text-xs text-center border-b border-amber-500/20 font-bold">
+            VIEW ONLY MODE
+         </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden relative">
         
         {/* Sidebar Container (Desktop: Resizable, Mobile: Drawer) */}
         {(!isMobile || showSidebar) && (
@@ -370,6 +495,7 @@ const IDE = () => {
                     onCreate={handleCreateFile} 
                     onDelete={handleDeleteFile}
                     onRename={handleRenameFile}
+                    isViewMode={isViewMode}
                 />
             </div>
         )}
@@ -401,13 +527,13 @@ const IDE = () => {
                 theme={theme === 'dark' ? "vs-dark" : "light"}
                 onMount={handleEditorDidMount}
                 options={{
-                    minimap: { enabled: true },
+                    minimap: { enabled: false },
                     fontSize: 14,
-                    fontFamily: "'Fira Code', 'Consolas', monospace",
-                    padding: { top: 20 },
-                    automaticLayout: true,
-                    scrollBeyondLastLine: false,
-                    smoothScrolling: true,
+                    wordWrap: 'on',
+                    padding: { top: 16 },
+                    fontFamily: 'JetBrains Mono, monospace',
+                    scrollbar: { vertical: 'hidden' },
+                    readOnly: isViewMode, // View Mode
                 }}
                 />
             </div>
@@ -427,7 +553,7 @@ const IDE = () => {
                 onCommand={handleTerminalCommand}   // New prop
                 stdin={stdin}
                 setStdin={setStdin}
-                user={user}
+                user={currentUser}
                 roomId={roomId}
             />
         </div>
@@ -451,8 +577,8 @@ const IDE = () => {
                     <Chat 
                         ydoc={window.currentYDoc} 
                         provider={window.currentProvider} 
-                        username={user.name} 
-                        color={user.color} 
+                        username={currentUser.name} 
+                        color={currentUser.color} 
                         onClose={() => setIsChatOpen(false)}
                     />
                 </div>
@@ -468,10 +594,11 @@ const IDE = () => {
       {/* Status Bar */}
       <StatusBar 
         fileCount={files.length} 
-        username={user.name} 
+        username={currentUser.name} 
         fileName={fileName} 
       />
-      
+      </>
+      )}
     </div>
   );
 };

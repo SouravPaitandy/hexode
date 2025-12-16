@@ -1,92 +1,214 @@
-# DevDock 🚢
-**The Collaborative Cloud IDE.** Code together, anywhere, anytime.
+# Hexode ⚡
 
-![DevDock](https://img.shields.io/badge/Status-Public_Beta-blue?style=for-the-badge) 
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+**A Real-Time Collaborative Cloud IDE for Modern Coders**
 
-DevDock is a **fully functional, browser-based Integrated Development Environment (IDE)** built for real-time collaboration. It allows multiple users to edit code simultaneously, chat, manage projects, and execute code in secure sandboxed environments—just like VS Code Live Share, but entirely in the browser.
+Hexode is a **browser-based collaborative Integrated Development Environment (IDE)** that enables developers and students to **create projects, write code, execute programs, and collaborate in real time** — directly from the browser.
+
+It combines the power of a modern code editor with instant collaboration and cloud execution, making it ideal for **learning, pair programming, interviews, hackathons, open-source contribution, and team development**.
+
+> 🎯 **Goal:** Remove local setup friction and make collaborative coding as easy as sharing a link.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-*   **Real-Time Collaboration**: Powered by **Y.js** and WebSockets. See other users' cursors and edits instantly (sub-millisecond latency).
-*   **Polyglot Execution Engine**: Run code securely in **Python, JavaScript, Java, and C++**.
-*   **Persistent File System**: Create, rename, delete, and organize files. Projects are saved automatically.
-*   **VS Code Experience**: Built with **Monaco Editor**, offering syntax highlighting, minimaps, and IntelliSense-like feel.
-*   **Integrated Chat**: Communicate with your team directly within the IDE.
-*   **Cloud Native**: Designed for serverless/containerized deployment (Docker, Render, Vercel).
+Hexode is designed to feel familiar like a local IDE, while unlocking the power of real-time cloud collaboration.
+
+* **⚡ Real-Time Collaboration**
+  Multi-user editing powered by **Y.js** and **WebSockets**. See teammates’ cursors, selections, and edits live with near real-time latency.
+
+* **🧠 Polyglot Code Execution**
+  Run code securely in **Python, JavaScript, Java, and C++** using sandboxed execution environments.
+
+* **📁 Project-Based File System**
+  Create, rename, delete, and organize files and folders. Projects persist automatically.
+
+* **🧩 VS Code–Like Editor Experience**
+  Built with **Monaco Editor** (the engine behind VS Code), featuring syntax highlighting, minimap, and smooth editing.
+
+* **💬 Integrated Team Chat**
+  Collaborate not just on code, but also through a built-in chat panel inside the IDE.
+
+* **☁️ Cloud-Native Architecture**
+  Designed to run seamlessly on modern platforms like **Vercel**, **Render**, and **Docker**.
+
+---
+
+## 🏗️ System Architecture (High-Level)
+
+Hexode follows a **client–server real-time collaboration architecture** designed for low latency and scalability.
+
+```
+┌───────────────┐        WebSocket        ┌────────────────────┐
+│   Browser     │  ◀──────────────────▶  │  Collaboration     │
+│  (Monaco +    │                         │  Server (Node.js)  │
+│   Y.js)       │                         │  + Y-WebSocket     │
+└──────┬────────┘                         └─────────┬──────────┘
+       │                                            │
+       │ REST / WS                                  │ Persistence
+       ▼                                            ▼
+┌───────────────┐                        ┌────────────────────┐
+│ Execution     │                        │   MongoDB Storage  │
+│ Engine        │                        │                    │
+│ (Piston API)  │                        └────────────────────┘
+└───────────────┘
+```
+
+### Key Design Principles
+
+* **Real-time first:** Shared document state powered by Y.js
+* **Execution isolation:** Code runs in sandboxed environments
+* **Scalable sync:** Stateless collaboration server with persistence layer
+
+This separation ensures **low latency collaboration**, **safe execution**, and **horizontal scalability**.
 
 ---
 
 ## 🛠️ Tech Stack
 
-*   **Frontend**: React, Vite, Framer Motion, Lucide React.
-*   **Editor**: Monaco Editor (`@monaco-editor/react`).
-*   **Collaboration**: Y.js, Y-Websocket, Y-Monaco.
-*   **Backend**: Node.js, Express, WebSocket (`ws`).
-*   **Persistence**: Y-LevelDB (Server), LocalStorage (Client).
-*   **Execution**: Piston API (Sandboxed Code Runner).
+### Frontend
+
+* React
+* Vite
+* Monaco Editor (`@monaco-editor/react`)
+* Framer Motion
+* Lucide React
+
+### Collaboration
+
+* Y.js
+* Y-WebSocket
+* Y-Monaco
+
+### Backend
+
+* Node.js
+* Express.js
+* WebSocket (`ws`)
+
+### Persistence & Execution
+
+* Y-LevelDB (server-side persistence)
+* MongoDB for persistence User and Rooms
+* LocalStorage (client-side)
+* Piston API (secure sandboxed code execution)
 
 ---
 
 ## 🚀 Getting Started
 
-You can run DevDock efficiently on your local machine, with or without Docker.
+> ⚠️ **Note:** Hexode is under active development. APIs and features may evolve.
 
-### Option 1: Manual Run (Recommended for Development)
-No Docker required. Just Node.js.
+You can run Hexode locally with or without Docker.
 
-**1. Start the Server**
+---
+
+### ▶️ Option 1: Manual Setup (Recommended for Development)
+
+**Prerequisites:** Node.js (v18+ recommended)
+
+#### 1️⃣ Start the Backend Server
+
 ```bash
 cd server
 npm install
 npm run dev
 ```
-*Runs on Port 3001 (API + WebSocket).*
 
-**2. Start the Client**
+Runs on [**http://localhost:3001**](http://localhost:3001) (API + WebSocket)
+
+#### 2️⃣ Start the Frontend Client
+
 ```bash
 cd client
 npm install
 npm run dev
 ```
-*Opens in browser at `http://localhost:5173`.*
+
+Open [**http://localhost:5173**](http://localhost:5173) in your browser.
 
 ---
 
-### Option 2: Docker Compose (Production Ready)
-Ideally used for deployments or clean setups.
+### 🐳 Option 2: Docker Compose (Production-Ready)
 
 ```bash
 docker-compose up --build
 ```
-*Apps run on `localhost:80` (Client) and `localhost:3001` (Server).*
+
+* Client → `http://localhost:80`
+* Server → `http://localhost:3001`
 
 ---
 
 ## ☁️ Deployment
 
-DevDock is architected to run on free cloud tiers.
+Hexode is optimized for **free-tier cloud deployments**.
 
-*   **Frontend**: Deploy `client` folder to **Vercel** or **Netlify**.
-    *   Env Var: `VITE_API_URL` = `https://your-backend.com`
-    *   Env Var: `VITE_WS_URL` = `wss://your-backend.com`
-*   **Backend**: Deploy `server` folder to **Render** or **Railway**.
-    *   Docs: See `DEPLOYMENT_GUIDE.md` for step-by-step instructions.
+### Frontend (Client)
+
+Deploy the `client` folder to **Vercel** or **Netlify**.
+
+Environment variables:
+
+```env
+VITE_API_URL=https://your-backend-url
+VITE_WS_URL=wss://your-backend-url
+```
+
+### Backend (Server)
+
+Deploy the `server` folder to **Render** or **Railway**.
 
 ---
 
-## 📸 Screenshots
+## 🌐 Live Demo
 
-*(Add screenshots of your Dashboard and IDE here)*
+> 🔗 **Live URL:** *(https://hexode.vercel.app)*
+
+---
+
+## 🗺️ Roadmap
+
+Planned and upcoming improvements:
+
+* WILL BE SHARED SOON
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome and appreciated! 🎉
+
+### How to Contribute
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m "feat: add awesome feature"`)
+4. Push to your branch
+5. Open a Pull Request
+
+### Contribution Guidelines
+
+* Keep commits small and focused
+* Follow existing code style
+* Add comments where logic is complex
+* Test your changes before submitting
 
 ---
 
 ## 📜 License
 
-MIT License. Free to use and modify.
+This project is licensed under the **MIT License** — free to use, modify, and distribute.
 
 ---
 
-Made with ❤️ by [Sourav Paitandy](https://www.souravpaitandy.me/)
+## 👨‍💻 Author
+
+Built with ❤️ by **Sourav Paitandy**
+🌐 [https://www.souravpaitandy.me](https://www.souravpaitandy.me)
+
+---
+
+> **Hexode — Code. Run. Collaborate.**
+>
+> *Build together. Learn faster. Ship smarter.*

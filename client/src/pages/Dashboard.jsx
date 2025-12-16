@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Folder, Clock, MoreVertical, Trash2, Code, Edit2, Check, Layout, Search, Zap } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
+import axios from 'axios';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -38,39 +40,93 @@ const Dashboard = () => {
     { id: "demo-cpp", name: "C++ Game Engine", lang: "C++", createdAt: new Date(Date.now() - 300000000).toISOString() },
   ];
 
-  // Load Projects from LocalStorage (with Seeding Logic)
+  const { user, isSignedIn } = useUser();
+  
+  // Load Projects (Hybrid: Local + DB)
   useEffect(() => {
-    const saved = localStorage.getItem('devdock-projects');
-    const hasSeeded = localStorage.getItem('devdock-demos-v1');
-    
-    let loadedProjects = [];
-    if (saved) {
-      loadedProjects = JSON.parse(saved);
+    const loadProjects = async () => {
+        // 1. Load Local
+        const saved = localStorage.getItem('devdock-projects');
+        let local = saved ? JSON.parse(saved) : [];
+        
+        // Seeding for new users (Local only)
+        if (!localStorage.getItem('devdock-demos-v1') && local.length === 0) {
+             local = [...DEMO_PROJECTS];
+             localStorage.setItem('devdock-projects', JSON.stringify(local));
+             localStorage.setItem('devdock-demos-v1', 'true');
+        }
+
+        if (isSignedIn) {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                // 1b. Sync User to DB
+                // Use env var or default to localhost
+                await axios.post(`${API_URL}/api/users/sync`, {
+                    clerkId: user.id,
+                    email: user.primaryEmailAddress?.emailAddress,
+                    name: user.fullName || user.firstName
+                });
+
+                // 2. Sync Local -> DB (Once)
+                if (local.length > 0) {
+                    await Promise.all(local.map(p => 
+                        axios.post(`${API_URL}/api/rooms`, { 
+                            roomId: p.id, 
+                            ownerId: user.id,
+                            name: p.name,
+                            lang: p.lang
+                        })
+                    ));
+                    localStorage.removeItem('devdock-projects'); // Clear local after sync
+                    local = [];
+                }
+
+                // 3. Fetch from DB
+                // 3. Fetch from DB
+                const res = await axios.get(`${API_URL}/api/rooms?ownerId=${user.id}`);
+                setProjects(res.data);
+            } catch (err) {
+                console.error("Failed to fetch/sync projects", err);
+            }
+        } else {
+            setProjects(local);
+        }
+    };
+    if (isSignedIn && user?.id) { // Only run if auth is ready
+        loadProjects();
+    } else if (!isSignedIn) {
+        loadProjects();
     }
+  }, [isSignedIn, user?.id]); // Depend on user.id to ensure it's loaded
 
-    if (!hasSeeded) {
-      const existingIds = new Set(loadedProjects.map(p => p.id));
-      const demosToAdd = DEMO_PROJECTS.filter(d => !existingIds.has(d.id));
-      loadedProjects = [...loadedProjects, ...demosToAdd];
-      localStorage.setItem('devdock-projects', JSON.stringify(loadedProjects));
-      localStorage.setItem('devdock-demos-v1', 'true');
-    }
-
-    setProjects(loadedProjects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-  }, []);
-
-  const handleNewProject = () => {
-    const id = "proj-" + Math.floor(Math.random() * 10000);
+  const handleNewProject = async () => {
+    const id = "proj-" + Math.floor(Math.random() * 100000);
     const newProject = {
       id,
+      roomId: id, // Consistency
       name: `Untitled Project`,
       lang: "JavaScript",
       createdAt: new Date().toISOString()
     };
 
-    const updated = [newProject, ...projects];
-    setProjects(updated);
-    localStorage.setItem('devdock-projects', JSON.stringify(updated));
+    if (isSignedIn) {
+        // Save to DB
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            await axios.post(`${API_URL}/api/rooms`, {
+                roomId: id,
+                ownerId: user.id,
+                name: newProject.name,
+                lang: newProject.lang
+            });
+            setProjects([newProject, ...projects]); // Optimistic update
+        } catch (err) { console.error(err); }
+    } else {
+        // Save to Local
+        const updated = [newProject, ...projects];
+        setProjects(updated);
+        localStorage.setItem('devdock-projects', JSON.stringify(updated));
+    }
     navigate(`/editor/${id}`);
   };
 
@@ -100,17 +156,17 @@ const Dashboard = () => {
     setEditingId(null);
   };
 
-  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProjects = projects.filter(p => p.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="bg-background min-h-screen text-foreground font-sans">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-4 border-b border-border flex justify-between items-center bg-surface/80 backdrop-blur-md">
         <div className="text-2xl font-bold flex items-center gap-3 text-foreground">
-            <div className="bg-gradient-to-br from-blue-600 to-cyan-400 p-2 rounded-xl flex shadow-lg shadow-blue-500/30">
+            <div className="bg-linear-to-br from-blue-600 to-cyan-400 p-2 rounded-xl flex shadow-lg shadow-blue-500/30">
                 <Code size={22} color="white" />
             </div>
-            DevDock
+            Hexode
         </div>
         <div className="flex gap-5 items-center">
              <div className="hidden md:block relative">
@@ -123,9 +179,17 @@ const Dashboard = () => {
                     className="bg-card border border-border rounded-lg py-2 pl-9 pr-3 text-foreground focus:outline-none focus:border-primary text-sm w-64 transition-colors placeholder:text-muted"
                  />
              </div>
-             <div className="h-6 w-[1px] bg-border"></div>
+             <div className="h-6 w-px bg-border"></div>
              <ThemeToggle />
-             <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-500 to-cyan-400 border-2 border-border flex justify-center items-center text-sm font-bold text-white">S</div>
+             {isSignedIn ? (
+                <UserButton afterSignOutUrl="/" />
+             ) : (
+                <SignInButton mode="modal">
+                    <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20">
+                        Sign In
+                    </button>
+                </SignInButton>
+             )}
         </div>
       </div>
 
@@ -140,7 +204,7 @@ const Dashboard = () => {
         </div>
 
         {/* Projects Grid */}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6 mb-12">
             
             {/* New Project Card */}
             <motion.button 
@@ -158,13 +222,13 @@ const Dashboard = () => {
             <AnimatePresence>
                 {filteredProjects.map((p) => (
                     <motion.div 
-                        key={p.id}
+                        key={p.roomId || p.id}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         layout
                     >
-                        <Link to={`/editor/${p.id}`} className="block h-full no-underline text-inherit">
+                        <Link to={`/editor/${p.roomId || p.id}`} className="block h-full no-underline text-inherit">
                             <motion.div 
                                 whileHover={{ y: -6 }}
                                 className="p-6 bg-surface rounded-2xl border border-border h-full flex flex-col justify-between hover:shadow-2xl hover:border-zinc-500 transition-all group"

@@ -1,7 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const WebSocket = require('ws');
+const mongoose = require('mongoose');
+const Room = require('./models/Room');
+const User = require('./models/User');
 const Y = require('yjs');
 const { LeveldbPersistence } = require('y-leveldb');
 const syncProtocol = require('y-protocols/sync');
@@ -9,18 +13,107 @@ const awarenessProtocol = require('y-protocols/awareness');
 const encoding = require('lib0/encoding');
 const decoding = require('lib0/decoding');
 
+// --- MongoDB Connection ---
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('✅ MongoDB Connected'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://hexode.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      // In production, log warning but maybe allow for now to prevent breakage if user changes domain
+      console.log(`[CORS] Request from unknown origin: ${origin}`);
+      // Default to allowing for this demo/beta phase, or restrict:
+      // callback(new Error('Not allowed by CORS')); 
+      callback(null, true); // Permissive fallback for smoother UX
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
+
+// --- Room Persistence API ---
+app.post('/api/users/sync', async (req, res) => {
+    try {
+        const { clerkId, email, name } = req.body;
+        let user = await User.findOne({ clerkId });
+        if (!user) {
+            user = new User({ clerkId, email, name });
+            await user.save();
+            console.log(`[DB] User created: ${email}`);
+        } else {
+            // Update name/email if changed
+            if (user.name !== name || user.email !== email) {
+                user.name = name;
+                user.email = email;
+                await user.save();
+                console.log(`[DB] User updated: ${email}`);
+            }
+        }
+        res.json(user);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/rooms', async (req, res) => {
+    try {
+        const { roomId, ownerId, files, name, lang } = req.body;
+        let room = await Room.findOne({ roomId });
+        if (!room) {
+            room = new Room({ roomId, ownerId, files, name, lang });
+            await room.save();
+            console.log(`[DB] Room created: ${roomId} (${name})`);
+        } else {
+            // Update existing room
+            if (files) room.files = files;
+            if (name) room.name = name;
+            if (lang) room.lang = lang;
+            room.lastModified = Date.now();
+            await room.save();
+            // console.log(`[DB] Room updated: ${roomId}`);
+        }
+        res.json(room);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/rooms', async (req, res) => {
+    try {
+        const { ownerId } = req.query;
+        if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+        const rooms = await Room.find({ ownerId });
+        res.json(rooms);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/rooms/:roomId', async (req, res) => {
+    try {
+        const room = await Room.findOne({ roomId: req.params.roomId });
+        if (!room) return res.status(404).json({ error: 'Room not found' });
+        res.json(room);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // --- Piston Execution API ---
 app.post('/execute', async (req, res) => {
-  const { code, language, stdin } = req.body;
+    const { code, files, language, stdin } = req.body;
   
   // LOGGING INPUT
   console.log("------------------------------------------------");
   console.log(`[EXECUTE] Language: ${language}`);
   console.log(`[EXECUTE] Stdin: "${stdin}"`);
+  console.log(`[EXECUTE] Files: ${files ? files.length : 1} file(s)`);
   console.log("------------------------------------------------");
 
   try {
@@ -30,13 +123,24 @@ app.post('/execute', async (req, res) => {
     const version = RUNTIMES[language] || '18.15.0';
     const PISTON_URL = process.env.PISTON_URL || 'https://emkc.org/api/v2/piston/execute';
     
+    // Prepare files for Piston (support multi-file or legacy single-code)
+    let pistonFiles = [];
+    if (files && Array.isArray(files) && files.length > 0) {
+        pistonFiles = files.map(f => ({ 
+            name: f.name, 
+            content: f.content 
+        }));
+    } else {
+        pistonFiles = [{ content: code }];
+    }
+
     const response = await fetch(PISTON_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             language: language || 'javascript',
             version: version,
-            files: [{ content: code }],
+            files: pistonFiles,
             stdin: stdin || ""
         })
     });
@@ -63,7 +167,7 @@ const docs = new Map(); // docName -> { doc, conns, awareness }
 const messageSync = 0;
 const messageAwareness = 1;
 
-const updateHandler = (update, origin, doc) => {
+const updateHandler = async (update, origin, doc) => {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, messageSync);
     syncProtocol.writeUpdate(encoder, update);
@@ -89,6 +193,11 @@ const setupWSConnection = (conn, req, docName) => {
              const update = Y.encodeStateAsUpdate(persistedDoc);
              Y.applyUpdate(doc, update);
         });
+        
+        // Autosave hook: Also update MongoDB on changes?
+        // Might be too heavy on every update. Better to have periodic sync from client or debounced here.
+        // For now relying on Y-LevelDB for local, and API /api/rooms for explicit save.
+        
         doc.on('update', update => persistence.storeUpdate(docName, update));
         
         const awareness = new awarenessProtocol.Awareness(doc);
@@ -141,7 +250,6 @@ const setupWSConnection = (conn, req, docName) => {
     conn.on('close', () => {
         conns.delete(conn);
         awarenessProtocol.removeAwarenessStates(awareness, [doc.clientID], null);
-        // if (conns.size === 0) docs.delete(docName); // Optional cleanup
     });
 };
 
@@ -150,12 +258,11 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (conn, req) => {
-    // Extract room name from URL path (e.g. ws://host/room-name)
     const docName = req.url.slice(1) || 'default';
     setupWSConnection(conn, req, docName);
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🚀 DevDock Server (API + Sync) running on port ${PORT}`);
+  console.log(`🚀 Hexode Server (API + Sync) running on port ${PORT}`);
 });

@@ -32,10 +32,10 @@ const Chat = ({ provider, ydoc, username, color, onClose }) => {
   };
 
   return (
-    <div className="w-full h-full bg-dark-lighter border-l border-zinc-800 flex flex-col text-zinc-200">
-      <div className="h-[45px] px-4 bg-dark-lighter text-zinc-400 text-xs font-bold uppercase tracking-widest border-b border-zinc-800 flex items-center justify-between select-none">
+    <div className="w-full h-full bg-surface border-l border-border flex flex-col text-foreground">
+      <div className="h-[45px] px-4 bg-surface text-muted text-xs font-bold uppercase tracking-widest border-b border-border flex items-center justify-between select-none">
         <span className="flex items-center gap-2"><MessageSquare size={14} /> LIVE CHAT</span>
-        <button onClick={onClose} className="bg-transparent border-none text-zinc-400 cursor-pointer hover:text-white transition-colors"><X size={16} /></button>
+        <button onClick={onClose} className="bg-transparent border-none text-muted cursor-pointer hover:text-foreground transition-colors"><X size={16} /></button>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
@@ -43,30 +43,30 @@ const Chat = ({ provider, ydoc, username, color, onClose }) => {
             <div key={msg.id} className="flex flex-col items-start animate-[fadeIn_0.2s]">
                 <div className="flex items-baseline gap-2 mb-0.5">
                     <span style={{ color: msg.color }} className="text-xs font-bold">{msg.user}</span>
-                    <span className="text-zinc-600 text-[10px]">{msg.time}</span>
+                    <span className="text-muted text-[10px] opacity-80">{msg.time}</span>
                 </div>
-                <div className="text-zinc-300 text-sm leading-snug break-words">
+                <div className="text-foreground text-sm leading-snug wrap-break-word">
                     {msg.text}
                 </div>
             </div>
         ))}
-        {messages.length === 0 && <div className="text-center text-zinc-600 mt-5 text-sm">No messages yet.<br/>Say hello! 👋</div>}
+        {messages.length === 0 && <div className="text-center text-muted mt-5 text-sm">No messages yet.<br/>Say hello! 👋</div>}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-4 border-t border-zinc-800 bg-dark-lighter">
-        <div className="flex gap-2.5 items-center bg-zinc-800 rounded-md px-3 py-1 border border-zinc-700 focus-within:border-blue-500 transition-colors">
+      <form onSubmit={sendMessage} className="p-4 border-t border-border bg-surface">
+        <div className="flex gap-2.5 items-center bg-card rounded-md px-3 py-1 border border-border focus-within:border-blue-500 transition-colors">
             <input 
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 bg-transparent border-none text-white outline-none text-xs h-8"
+                className="flex-1 bg-transparent border-none text-foreground outline-none text-xs h-8 placeholder-muted/50"
             />
             <button 
                 type="submit" 
                 disabled={!input.trim()}
-                className={`p-1.5 rounded flex items-center transition-colors ${input.trim() ? "bg-blue-600 text-white cursor-pointer hover:bg-blue-500" : "bg-transparent text-zinc-600 cursor-default"}`}
+                className={`p-1.5 rounded flex items-center transition-colors ${input.trim() ? "bg-blue-600 text-white cursor-pointer hover:bg-blue-500" : "bg-transparent text-muted cursor-default"}`}
             >
                 <Send size={14} />
             </button>
