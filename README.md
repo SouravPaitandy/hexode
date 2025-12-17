@@ -1,214 +1,313 @@
-# Hexode ⚡
+# Hexode - Cloud-Based Collaborative IDE
 
-**A Real-Time Collaborative Cloud IDE for Modern Coders**
+![Hexode](client/public/logo.png)
 
-Hexode is a **browser-based collaborative Integrated Development Environment (IDE)** that enables developers and students to **create projects, write code, execute programs, and collaborate in real time** — directly from the browser.
+**Hexode** is a modern, cloud-based collaborative IDE that enables real-time code editing, execution, and collaboration. Built with React, Monaco Editor, and Yjs for seamless real-time synchronization.
 
-It combines the power of a modern code editor with instant collaboration and cloud execution, making it ideal for **learning, pair programming, interviews, hackathons, open-source contribution, and team development**.
-
-> 🎯 **Goal:** Remove local setup friction and make collaborative coding as easy as sharing a link.
+**LIVE DEMO**: [Hexode](https://hexode.vercel.app)
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-Hexode is designed to feel familiar like a local IDE, while unlocking the power of real-time cloud collaboration.
+### 🚀 Core Features
 
-* **⚡ Real-Time Collaboration**
-  Multi-user editing powered by **Y.js** and **WebSockets**. See teammates’ cursors, selections, and edits live with near real-time latency.
+- **Multi-Language Support**: JavaScript, Python, Java, C, C++
+- **Real-Time Collaboration**: Live code editing with Yjs
+- **Cloud Persistence**: MongoDB-backed project storage
+- **Code Execution**: Instant code running via Piston API
+- **File Management**: Create, edit, delete files and folders
 
-* **🧠 Polyglot Code Execution**
-  Run code securely in **Python, JavaScript, Java, and C++** using sandboxed execution environments.
+### 💬 Collaboration
 
-* **📁 Project-Based File System**
-  Create, rename, delete, and organize files and folders. Projects persist automatically.
+- **Real-Time Chat**: Communicate with collaborators
+- **Share Projects**: Generate editable or read-only links
+- **Live Cursors**: See collaborators' cursor positions
+- **Presence Indicators**: Know who's online
 
-* **🧩 VS Code–Like Editor Experience**
-  Built with **Monaco Editor** (the engine behind VS Code), featuring syntax highlighting, minimap, and smooth editing.
+### 🎨 User Experience
 
-* **💬 Integrated Team Chat**
-  Collaborate not just on code, but also through a built-in chat panel inside the IDE.
+- **Interactive Product Tour**: 8-step onboarding for new users
+- **Keyboard Shortcuts**: Ctrl+S to save, Ctrl+Enter to run
+- **Auto-Save**: Debounced auto-save every 2 seconds
+- **Loading States**: Skeleton loaders and spinners
+- **Toast Notifications**: User-friendly feedback
+- **Dark/Light Theme**: Toggle between themes
 
-* **☁️ Cloud-Native Architecture**
-  Designed to run seamlessly on modern platforms like **Vercel**, **Render**, and **Docker**.
+### 🔒 Security & Performance
 
----
+- **CORS Protection**: Strict origin validation
+- **Input Validation**: Server-side validation on all endpoints
+- **Rate Limiting**: DDoS protection (100 req/15min)
+- **Error Boundaries**: Graceful error handling
+- **File Limits**: Max 50 files, 1MB per file
+- **Bundle Optimization**: Code splitting ready
 
-## 🏗️ System Architecture (High-Level)
+### ♿ Accessibility
 
-Hexode follows a **client–server real-time collaboration architecture** designed for low latency and scalability.
-
-```
-┌───────────────┐        WebSocket        ┌────────────────────┐
-│   Browser     │  ◀──────────────────▶  │  Collaboration     │
-│  (Monaco +    │                         │  Server (Node.js)  │
-│   Y.js)       │                         │  + Y-WebSocket     │
-└──────┬────────┘                         └─────────┬──────────┘
-       │                                            │
-       │ REST / WS                                  │ Persistence
-       ▼                                            ▼
-┌───────────────┐                        ┌────────────────────┐
-│ Execution     │                        │   MongoDB Storage  │
-│ Engine        │                        │                    │
-│ (Piston API)  │                        └────────────────────┘
-└───────────────┘
-```
-
-### Key Design Principles
-
-* **Real-time first:** Shared document state powered by Y.js
-* **Execution isolation:** Code runs in sandboxed environments
-* **Scalable sync:** Stateless collaboration server with persistence layer
-
-This separation ensures **low latency collaboration**, **safe execution**, and **horizontal scalability**.
+- **ARIA Labels**: Screen reader support
+- **Keyboard Navigation**: Full keyboard accessibility
+- **Focus Indicators**: Clear focus states
 
 ---
 
-## 🛠️ Tech Stack
+## 🏗️ Tech Stack
 
 ### Frontend
 
-* React
-* Vite
-* Monaco Editor (`@monaco-editor/react`)
-* Framer Motion
-* Lucide React
-
-### Collaboration
-
-* Y.js
-* Y-WebSocket
-* Y-Monaco
+- **React** + **Vite**: Fast development and builds
+- **Monaco Editor**: VS Code's editor
+- **Yjs** + **y-websocket**: Real-time collaboration
+- **Framer Motion**: Smooth animations
+- **Clerk**: Authentication
+- **Tailwind CSS**: Styling
+- **Lucide Icons**: Beautiful icons
 
 ### Backend
 
-* Node.js
-* Express.js
-* WebSocket (`ws`)
-
-### Persistence & Execution
-
-* Y-LevelDB (server-side persistence)
-* MongoDB for persistence User and Rooms
-* LocalStorage (client-side)
-* Piston API (secure sandboxed code execution)
+- **Node.js** + **Express**: Server framework
+- **MongoDB** + **Mongoose**: Database
+- **Yjs** + **y-leveldb**: CRDT persistence
+- **WebSocket**: Real-time communication
+- **Piston API**: Code execution
 
 ---
 
-## 🚀 Getting Started
+## 📦 Installation
 
-> ⚠️ **Note:** Hexode is under active development. APIs and features may evolve.
+### Prerequisites
 
-You can run Hexode locally with or without Docker.
+- Node.js 18+
+- MongoDB
+- npm or yarn
 
----
+### Clone Repository
 
-### ▶️ Option 1: Manual Setup (Recommended for Development)
+```bash
+git clone https://github.com/yourusername/hexode.git
+cd hexode
+```
 
-**Prerequisites:** Node.js (v18+ recommended)
+### Install Dependencies
 
-#### 1️⃣ Start the Backend Server
+```bash
+# Install server dependencies
+cd server
+npm install
+
+# Install client dependencies
+cd ../client
+npm install
+```
+
+### Environment Variables
+
+**Server** (`server/.env`):
+
+```env
+MONGO_URI=mongodb://localhost:27017/hexode
+PORT=3001
+CLIENT_URL=http://localhost:5173
+NODE_ENV=development
+```
+
+**Client** (`client/.env`):
+
+```env
+VITE_API_URL=http://localhost:3001
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX  # Optional
+```
+
+### Run Development Servers
+
+**Terminal 1 - Server:**
 
 ```bash
 cd server
-npm install
 npm run dev
 ```
 
-Runs on [**http://localhost:3001**](http://localhost:3001) (API + WebSocket)
-
-#### 2️⃣ Start the Frontend Client
+**Terminal 2 - Client:**
 
 ```bash
 cd client
-npm install
 npm run dev
 ```
 
-Open [**http://localhost:5173**](http://localhost:5173) in your browser.
+Visit: `http://localhost:5173`
 
 ---
 
-### 🐳 Option 2: Docker Compose (Production-Ready)
+## 🚀 Production Build
+
+### Client
 
 ```bash
-docker-compose up --build
+cd client
+npm run build
+npm run preview  # Test production build
 ```
 
-* Client → `http://localhost:80`
-* Server → `http://localhost:3001`
+### Server
 
----
-
-## ☁️ Deployment
-
-Hexode is optimized for **free-tier cloud deployments**.
-
-### Frontend (Client)
-
-Deploy the `client` folder to **Vercel** or **Netlify**.
-
-Environment variables:
-
-```env
-VITE_API_URL=https://your-backend-url
-VITE_WS_URL=wss://your-backend-url
+```bash
+cd server
+npm start
 ```
 
-### Backend (Server)
+---
 
-Deploy the `server` folder to **Render** or **Railway**.
+## 📁 Project Structure
+
+```
+hexode/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/    # Reusable components
+│   │   ├── pages/         # Page components
+│   │   ├── utils/         # Utilities (analytics, etc.)
+│   │   └── context/       # React contexts
+│   └── public/            # Static assets
+├── server/                # Node.js backend
+│   ├── models/           # MongoDB models
+│   ├── storage/          # Yjs LevelDB storage
+│   └── index.js          # Server entry point
+└── README.md
+```
 
 ---
 
-## 🌐 Live Demo
+## 🎯 Key Features Implementation
 
-> 🔗 **Live URL:** *(https://hexode.vercel.app)*
+### Real-Time Collaboration (Yjs)
+
+```javascript
+// Automatic synchronization across clients
+const ydoc = new Y.Doc();
+const provider = new WebsocketProvider("ws://localhost:3001", roomId, ydoc);
+```
+
+### Auto-Save
+
+```javascript
+// Debounced auto-save every 2 seconds
+useEffect(() => {
+  const handleUpdate = () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(performSave, 2000);
+  };
+  ydoc.on("update", handleUpdate);
+}, []);
+```
+
+### Keyboard Shortcuts
+
+- **Ctrl+S** / **Cmd+S**: Manual save
+- **Ctrl+Enter** / **Cmd+Enter**: Run code
 
 ---
 
-## 🗺️ Roadmap
+## 📊 Analytics (Optional)
 
-Planned and upcoming improvements:
+Add Google Analytics 4 tracking:
 
-* WILL BE SHARED SOON
+1. Get GA4 Measurement ID
+2. Add to `client/.env`: `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
+3. Events tracked: project creation, code execution, file operations
+
+---
+
+## 🔐 Security Features
+
+- **CORS**: Whitelist-based origin validation
+- **Rate Limiting**:
+  - API: 100 requests/15min
+  - Projects: 5 creations/min
+  - Execution: 15 runs/min
+- **Input Validation**: All API endpoints validated
+- **Error Boundaries**: Prevent app crashes
+
+---
+
+## 🎨 Customization
+
+### Themes
+
+Toggle between dark/light themes via the theme toggle button.
+
+### Languages
+
+Supported: JavaScript, Python, Java, C, C++
+
+Add more in `IDE.jsx`:
+
+```javascript
+const RUNTIMES = {
+  javascript: "18.15.0",
+  python: "3.10.0",
+  // Add more...
+};
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Kill process on port 3001 (server)
+npx kill-port 3001
+
+# Kill process on port 5173 (client)
+npx kill-port 5173
+```
+
+### MongoDB Connection Failed
+
+- Ensure MongoDB is running: `mongod`
+- Check `MONGO_URI` in `server/.env`
+
+### Yjs Sync Issues
+
+- Clear browser localStorage
+- Restart server to reset LevelDB
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome and appreciated! 🎉
-
-### How to Contribute
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m "feat: add awesome feature"`)
-4. Push to your branch
-5. Open a Pull Request
-
-### Contribution Guidelines
-
-* Keep commits small and focused
-* Follow existing code style
-* Add comments where logic is complex
-* Test your changes before submitting
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
 ---
 
-## 📜 License
+## 📝 License
 
-This project is licensed under the **MIT License** — free to use, modify, and distribute.
-
----
-
-## 👨‍💻 Author
-
-Built with ❤️ by **Sourav Paitandy**
-🌐 [https://www.souravpaitandy.me](https://www.souravpaitandy.me)
+MIT License - see LICENSE file for details
 
 ---
 
-> **Hexode — Code. Run. Collaborate.**
->
-> *Build together. Learn faster. Ship smarter.*
+## 🙏 Acknowledgments
+
+- **Monaco Editor** - VS Code's editor
+- **Yjs** - CRDT framework
+- **Piston** - Code execution engine
+- **Clerk** - Authentication
+- **Tailwind CSS** - Styling framework
+
+---
+
+## 📧 Contact
+
+- **Website**: [souravpaitandy.me](https://www.souravpaitandy.me)
+- **GitHub**: [@souravpaitandy](https://github.com/souravpaitandy)
+- **Email**: souravpaitandy@gmail.com
+
+---
+
+**Built with ❤️ by the Hexode Team**

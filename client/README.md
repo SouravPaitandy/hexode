@@ -1,16 +1,133 @@
-# React + Vite
+# Hexode Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React-based frontend for Hexode collaborative IDE.
 
-Currently, two official plugins are available:
+## 🚀 Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Visit: `http://localhost:5173`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📦 Tech Stack
 
-## Expanding the ESLint configuration
+- **React 18** + **Vite**
+- **Monaco Editor** - VS Code's editor
+- **Yjs** - Real-time collaboration
+- **Clerk** - Authentication
+- **Framer Motion** - Animations
+- **Tailwind CSS** - Styling
+- **Lucide Icons** - Icons
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🔧 Environment Variables
+
+Create `.env` file:
+
+```env
+VITE_API_URL=http://localhost:3001
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key_here
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX  # Optional - Google Analytics
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # Reusable components
+│   ├── ide/            # IDE-specific components
+│   ├── Chat.jsx        # Real-time chat
+│   ├── Sidebar.jsx     # File tree
+│   ├── Toast.jsx       # Notifications
+│   ├── ProductTour.jsx # Onboarding tour
+│   └── ErrorBoundary.jsx
+├── pages/              # Page components
+│   ├── Landing.jsx     # Landing page
+│   ├── Dashboard.jsx   # Project dashboard
+│   └── IDE.jsx         # Main IDE
+├── utils/              # Utilities
+│   ├── analytics.js    # GA4 tracking
+│   └── fileSystem.js   # File operations
+├── context/            # React contexts
+│   └── ThemeContext.jsx
+└── App.jsx             # Main app component
+```
+
+## ✨ Key Features
+
+### Product Tour
+
+8-step interactive onboarding for new users with spotlight highlighting.
+
+### Keyboard Shortcuts
+
+- **Ctrl+S** / **Cmd+S**: Save project
+- **Ctrl+Enter** / **Cmd+Enter**: Run code
+
+### Auto-Save
+
+Debounced auto-save every 2 seconds with visual indicator.
+
+### Real-Time Collaboration
+
+Live code editing powered by Yjs CRDT.
+
+## 🎨 Customization
+
+### Theme
+
+Toggle dark/light theme via theme button in header.
+
+### Monaco Editor
+
+Configure in `IDE.jsx`:
+
+```javascript
+<Editor
+  theme={theme === "dark" ? "vs-dark" : "light"}
+  options={{
+    fontSize: 14,
+    minimap: { enabled: false },
+    // Add more options
+  }}
+/>
+```
+
+## 📊 Analytics
+
+Track user events with Google Analytics 4:
+
+1. Get GA4 Measurement ID
+2. Add to `.env`: `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
+3. Events auto-tracked: project creation, code execution, file operations
+
+## 🏗️ Build
+
+```bash
+# Production build
+npm run build
+
+# Preview production build
+npm run preview
+
+# Analyze bundle
+npm run build
+npx vite-bundle-visualizer
+```
+
+## 🧪 Development
+
+```bash
+# Run dev server
+npm run dev
+
+# Lint
+npm run lint
+```
+
+## 📝 Notes
+
+- Clear localStorage to reset product tour: `localStorage.removeItem('hexode-tour-completed')`
+- Monaco Editor is the largest dependency (~3MB)
+- Consider code splitting for production optimization

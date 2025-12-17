@@ -3,7 +3,6 @@ import { FileCode, FileJson, FileType, File, Plus, Trash2, Edit2, ChevronDown, C
 import { buildFileTree } from '../utils/fileSystem';
 
 // --- Recursive File Node ---
-// --- Recursive File Node ---
 const FileNode = ({ node, depth, activeFile, expandedFolders, toggleFolder, onSelect, onRename, onDelete, hoveredFile, setHoveredFile, editingFile, setEditingFile, editName, setEditName, handleRenameSubmit, isCreating, creationPath, setCreationPath, setIsCreating, newName, setNewName, handleCreateSubmit, isViewMode }) => {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = activeFile === node.path;

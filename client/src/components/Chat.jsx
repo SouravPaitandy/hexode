@@ -50,7 +50,7 @@ const Chat = ({ provider, ydoc, username, color, onClose }) => {
                 </div>
             </div>
         ))}
-        {messages.length === 0 && <div className="text-center text-muted mt-5 text-sm">No messages yet.<br/>Say hello! 👋</div>}
+        {messages.length === 0 && <div className="text-center text-muted mt-5 text-sm">Welcome to Hexode Chat!<br/> No messages yet.<br/>Say hello! 👋</div>}
         <div ref={messagesEndRef} />
       </div>
 

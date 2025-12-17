@@ -45,9 +45,10 @@ const Landing = () => {
             <nav className="fixed top-0 w-full z-50 border-b border-border bg-surface/70 backdrop-blur-xl supports-backdrop-filter:bg-surface/60">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
-                        <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
+                        {/* <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
                             <Code2 size={20} className="text-gray-200" />
-                        </div>
+                        </div> */}
+                        <img src="logo.png" alt="</>" className='w-10 h-10'/>
                         <span>Hexode</span>
                     </div>
                     
@@ -273,6 +274,7 @@ const Landing = () => {
                 <div className="max-w-7xl mx-auto px-6 py-12">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
                         <div className="flex items-center gap-2">
+                            <img src="logo.png" alt="</>" className='w-5 h-5'/>
                             <span className="text-foreground font-semibold">Hexode</span>
                             <span>© {new Date().getFullYear()}</span>
                         </div>

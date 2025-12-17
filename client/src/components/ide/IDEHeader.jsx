@@ -4,7 +4,7 @@ import { Code2, LayoutGrid, Globe, ChevronRight, MessageSquare, Play, Menu, Shar
 import ThemeToggle from '../ThemeToggle';
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 
-const IDEHeader = ({ user, roomId='Demo-Room', fileName='Untitled', isChatOpen, setIsChatOpen, runCode, isRunning, onToggleSidebar, isViewMode=false }) => {
+const IDEHeader = ({ user, roomId='Demo-Room', fileName='Untitled', isChatOpen, setIsChatOpen, runCode, isRunning, onToggleSidebar, isViewMode=false, isSaving=false, lastSaved }) => {
     const [isShareOpen, setIsShareOpen] = React.useState(false);
   return (
     <header className="h-[45px] px-4 bg-surface flex justify-between items-center border-b border-border select-none">
@@ -14,7 +14,7 @@ const IDEHeader = ({ user, roomId='Demo-Room', fileName='Untitled', isChatOpen, 
                 <Menu size={18} />
             </button>
             <div className="flex items-center gap-2 font-bold text-base tracking-wide text-foreground">
-                <Code2 size={18} className="text-blue-500" />
+                <img src="../../logo.png" alt="</>" className='w-5 h-5'/>
                 <span>Hexode</span>
             </div>
             {/* Dashboard Link */}
@@ -25,6 +25,16 @@ const IDEHeader = ({ user, roomId='Demo-Room', fileName='Untitled', isChatOpen, 
             <span className="hidden md:flex text-xs text-muted items-center gap-1.5 font-mono">
                 {user?.username} <Globe size={13} /> {roomId} <ChevronRight size={12} /> {fileName}
             </span>
+            <div className="h-4 w-px bg-border"></div>
+            {isSaving ? (
+                <span className="text-xs text-amber-500 flex items-center gap-1 animate-pulse">
+                    Saving...
+                </span>
+            ) : lastSaved ? (
+                 <span className="text-xs text-green-500/80 flex items-center gap-1">
+                    Saved
+                </span>
+            ) : null}
         </div>
 
         {/* Right: Actions */}
