@@ -6,6 +6,9 @@ import Dashboard from "./pages/Dashboard";
 import IDE from "./pages/IDE";
 import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
+import NotFound from "./pages/NotFound";
+import Docs from "./pages/Docs"; // Import Docs
+import { ModalProvider } from "./context/ModalContext";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -24,15 +27,21 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/editor/:roomId" element={<IDE />} />
-          {/* Fallback for direct link without ID */}
-          <Route path="/editor" element={<IDE />} />
-        </Routes>
-      </BrowserRouter>
+      <ModalProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/docs" element={<Docs />} />
+            <Route path="/editor/:roomId" element={<IDE />} />
+            {/* Fallback for direct link without ID */}
+            <Route path="/editor" element={<IDE />} />
+
+            {/* Universal 404 - Must be last */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </ModalProvider>
     </ErrorBoundary>
   );
 }

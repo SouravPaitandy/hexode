@@ -17,13 +17,17 @@ import {
 import ThemeToggle from "../components/ThemeToggle";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import axios from "axios";
+import { useModal } from "../context/ModalContext";
+import { useToast } from "../components/Toast";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { confirm } = useModal();
   const [projects, setProjects] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const { addToast } = useToast();
 
   const timeAgo = (dateString) => {
     if (dateString === "Demo") return "Demo Project";
@@ -208,24 +212,32 @@ const Dashboard = () => {
   const deleteProject = async (e, id) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this project?")) {
-      const updated = projects.filter((p) => (p.roomId || p.id) !== id);
-      setProjects(updated);
+    confirm({
+      title: "Delete Project?",
+      message:
+        "Are you sure you want to delete this project? This action cannot be undone.",
+      confirmText: "Delete",
+      type: "danger",
+      onConfirm: async () => {
+        const updated = projects.filter((p) => (p.roomId || p.id) !== id);
+        setProjects(updated);
 
-      if (isSignedIn) {
-        try {
-          const API_URL =
-            import.meta.env.VITE_API_URL || "http://localhost:3001";
-          await axios.delete(`${API_URL}/api/rooms/${id}`);
-        } catch (err) {
-          console.error("Failed to delete project", err);
-          alert("Failed to delete project from server");
-          // revert?
+        if (isSignedIn) {
+          try {
+            const API_URL =
+              import.meta.env.VITE_API_URL || "http://localhost:3001";
+            await axios.delete(`${API_URL}/api/rooms/${id}`);
+          } catch (err) {
+            console.error("Failed to delete project", err);
+            // alert("Failed to delete project from server");
+            // Consider toast here if available, but modal closes anyway
+            addToast("Failed to delete project from server", "error");
+          }
+        } else {
+          localStorage.setItem("devdock-projects", JSON.stringify(updated));
         }
-      } else {
-        localStorage.setItem("devdock-projects", JSON.stringify(updated));
-      }
-    }
+      },
+    });
   };
 
   const startEditing = (e, p) => {
@@ -266,7 +278,7 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="bg-background min-h-screen text-foreground font-sans">
+    <div className="bg-background min-h-screen text-foreground font-sans relative flex flex-col">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-4 border-b border-border flex justify-between items-center bg-surface/80 backdrop-blur-md">
         <a href="/">
@@ -306,7 +318,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="pt-32 px-6 md:px-12 max-w-7xl mx-auto">
+      <div className="pt-32 px-6 mb-12 md:px-12 max-w-7xl mx-auto">
         {/* Welcome */}
         <div className="mb-12 flex justify-between items-end">
           <div>
@@ -443,6 +455,9 @@ const Dashboard = () => {
             </AnimatePresence>
           )}
         </div>
+      </div>
+      <div className="absolute bottom-6 w-full text-center text-zinc-600 text-xs font-mono pointer-events-none">
+        HEXODE_SYSTEM_V2.0
       </div>
     </div>
   );

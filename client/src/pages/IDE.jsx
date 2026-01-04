@@ -13,31 +13,58 @@ import { useToast } from "../components/Toast";
 import IDEHeader from "../components/ide/IDEHeader";
 import TerminalPanel from "../components/ide/TerminalPanel";
 import StatusBar from "../components/ide/StatusBar";
+import NotFound from "./NotFound";
 import { useTheme } from "../context/ThemeContext";
+import { useModal } from "../context/ModalContext";
 
 const IDE = () => {
   const { theme } = useTheme();
   const { roomId } = useParams();
+  // const navigate = useNavigate();
+  const { confirm } = useModal();
+  const isPlayground = roomId === "test";
+  const testSessionId = useRef(
+    "playground-" + Math.random().toString(36).substr(2, 9)
+  ).current;
+
   const [searchParams] = useSearchParams();
-  const isViewMode = searchParams.get("mode") === "view";
+  const urlViewMode = searchParams.get("mode") === "view";
   const { user, isSignedIn, isLoaded } = useUser();
   const [lastSaved, setLastSaved] = useState(null);
 
+  const [roomOwnerId, setRoomOwnerId] = useState(null);
+  const [isGuestEditAllowed, setIsGuestEditAllowed] = useState(false);
+
+  // Security: Enforce View Mode if current user is NOT the owner
+  const isOwner = useMemo(() => {
+    if (isPlayground) return true; // Playground is always editable
+    if (!roomOwnerId) return true; // Default to allow edit if anonymous/new room
+    if (!isSignedIn || !user) return false;
+    return user.id === roomOwnerId;
+  }, [roomOwnerId, isSignedIn, user, isPlayground]);
+
+  const isViewMode = urlViewMode || (!isOwner && !isGuestEditAllowed);
+
+  // Mobile / Responsive State
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showSidebar, setShowSidebar] = useState(!isMobile && !isPlayground); // Hide sidebar in playground
+
   const [editorRef, setEditorRef] = useState(null);
-  const [terminalHistory, setTerminalHistory] = useState([
-    { type: "system", content: "Welcome to Hexode Shell" },
-    { type: "system", content: 'Type "help" for available commands.' },
-  ]);
+  const [terminalHistory, setTerminalHistory] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("terminal"); // terminal | input | console | problems
-  const [stdin, setStdin] = useState("");
+  const [activeTab, setActiveTab] = useState("terminal");
+  const [stdin, setStdin] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isHydrating, setIsHydrating] = useState(true);
 
   // Smart Autosave (Debounced)
   const saveTimeoutRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isNotFound, setIsNotFound] = useState(false);
+  // Allow MongoDB ObjectIDs OR "proj-XXXX" format
+  const isValidProjectId = (id) => /^(proj-\d+|[0-9a-fA-F]{24})$/.test(id);
 
   useEffect(() => {
     if (isViewMode || !window.currentYDoc) return;
@@ -47,7 +74,7 @@ const IDE = () => {
     const performSave = async () => {
       setIsSaving(true);
       try {
-        if (isSignedIn) {
+        if (isSignedIn && !isPlayground) {
           const fileMap = ydoc.getMap("project-files");
           const serializedFiles = {};
 
@@ -61,6 +88,7 @@ const IDE = () => {
             roomId,
             ownerId: user.id,
             files: serializedFiles,
+            isGuestEditAllowed, // Persist setting
           });
           if (process.env.NODE_ENV === "development") {
             console.log("Autosave successful", serializedFiles);
@@ -92,20 +120,24 @@ const IDE = () => {
     };
   }, [isSignedIn, isViewMode, roomId, isConnected]);
 
-  // Mobile / Responsive State
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showSidebar, setShowSidebar] = useState(!isMobile);
-
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) setShowSidebar(false);
-      else setShowSidebar(true);
+
+      // Don't auto-close on mobile - let user control sidebar manually
+      // Only auto-show when switching to desktop
+      if (!mobile && !showSidebar) {
+        setShowSidebar(true);
+      }
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [showSidebar]);
+
+  useEffect(() => {
+    if (isPlayground) setShowSidebar(false);
+  }, [isPlayground]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -202,7 +234,7 @@ const IDE = () => {
   const [layout, setLayout] = useState({
     sidebarW: 250,
     terminalH: 220,
-    chatW: 300,
+    chatW: 400,
   });
   const isResizing = useRef(null); // 'sidebar' | 'terminal' | 'chat'
 
@@ -214,8 +246,12 @@ const IDE = () => {
     document.head.appendChild(styleSheet);
 
     const ydoc = new Y.Doc();
-    const room = roomId || "monaco-demo";
-    const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3001";
+    const room = isPlayground ? testSessionId : roomId || "monaco-demo";
+    // Auto-derive WS URL from API URL if not explicitly set
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const WS_URL =
+      import.meta.env.VITE_WS_URL || API_URL.replace(/^http/, "ws");
+
     const provider = new WebsocketProvider(WS_URL, room, ydoc);
 
     provider.awareness.setLocalStateField("user", currentUser);
@@ -239,18 +275,81 @@ const IDE = () => {
       styleSheet.innerText = css;
     });
 
+    // Handle Connection Status
+    const handleStatusChange = ({ status }) => {
+      const connected = status === "connected";
+      setIsConnected(connected);
+      if (connected) {
+        // Only toast if we were previously disconnected (to avoid spam on initial load)
+        // Using a Ref to track previous state if needed, but for now simple 'connected' toast is fine
+        // Or better: show "Syncing..." transiently?
+        // Let's rely on IDEHeader Visual Indicator primarily, and Toast for Offline.
+      }
+    };
+    provider.on("status", handleStatusChange);
+
+    // Global Online/Offline Listeners
+    const handleOnline = () => {
+      addToast("Back Online. Syncing changes...", "success", 3000);
+      // Provider should auto-reconnect, but we can force it just in case
+      if (!provider.shouldConnect) provider.connect();
+    };
+    const handleOffline = () => {
+      addToast("You are Offline. Changes saved locally.", "warning", 5000);
+      setIsConnected(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Initial check
+    if (!navigator.onLine) {
+      setIsConnected(false);
+    }
+
     const initProject = async () => {
       const yFilesMap = ydoc.getMap("project-files");
-      if (yFilesMap.size === 0) {
-        try {
-          // Try fetching from DB first
+      // Always fetch room metadata to check ownership, even if Yjs is synced
+      try {
+        let dbFiles = null;
+
+        if (!isPlayground) {
+          // Validation: If not playground/demo and invalid ID format -> 404
+          // But if it looks valid (e.g. proj-123), we try to fetch.
+          // If fetch fails (404), we allow it to fall back to local creation (for guests).
+          const room = roomId || "monaco-demo";
+          if (room !== "monaco-demo" && !isValidProjectId(room)) {
+            setIsNotFound(true);
+            return;
+          }
+
           const API_URL =
             import.meta.env.VITE_API_URL || "http://localhost:3001";
-          const res = await axios.get(
-            `${API_URL}/api/rooms/${roomId || "monaco-demo"}`
-          );
-          const dbFiles = res.data?.files;
+          try {
+            const res = await axios.get(
+              `${API_URL}/api/rooms/${roomId || "monaco-demo"}`
+            );
 
+            if (res.data?.ownerId) {
+              setRoomOwnerId(res.data.ownerId);
+            }
+            if (res.data?.isGuestEditAllowed) {
+              setIsGuestEditAllowed(res.data.isGuestEditAllowed);
+            }
+
+            dbFiles = res.data?.files;
+          } catch (e) {
+            // Note: We do NOT 404 here anymore.
+            // If API fails, it might be a local-only project (guest mode).
+            // We proceed to Yjs sync/fallback.
+            console.warn(
+              "DB Fetch failed or skipped (proceeding to local/Yjs)",
+              e
+            );
+          }
+        }
+
+        if (yFilesMap.size === 0) {
           if (dbFiles && Object.keys(dbFiles).length > 0) {
             if (process.env.NODE_ENV === "development") {
               console.log("Hydrating from DB...");
@@ -262,41 +361,51 @@ const IDE = () => {
             });
             setFileName(Object.keys(dbFiles)[0]);
           } else {
-            // Default / Demo Setup
-
+            // Default / Demo / Playground Setup
             const room = roomId || "monaco-demo";
-            // ... existing demo logic ...
-            yFilesMap.set("index.js", true);
-            ydoc
-              .getText("index.js")
-              .insert(0, "// Welcome to Hexode!\nconsole.log('Hello World');");
 
-            yFilesMap.set("src/utils.js", true);
-            ydoc
-              .getText("src/utils.js")
-              .insert(
-                0,
-                "const add = (a, b) => a + b;\nmodule.exports = { add };"
-              );
+            if (isPlayground) {
+              if (!yFilesMap.has("playground.js")) {
+                yFilesMap.set("playground.js", true);
+                ydoc
+                  .getText("playground.js")
+                  .insert(
+                    0,
+                    "// Hexode Playground\n// Write code here. Changes are NOT saved.\n// Press 'Run' to execute.\n\nconsole.log('Hello from the Playground!');\n"
+                  );
+                setFileName("playground.js");
+              }
+            } else if (room === "monaco-demo" || !dbFiles) {
+              yFilesMap.set("index.js", true);
+              ydoc
+                .getText("index.js")
+                .insert(
+                  0,
+                  "// Welcome to Hexode!\nconsole.log('Hello World');"
+                );
+              setFileName("index.js");
 
-            setFileName("index.js");
+              if (!yFilesMap.has("src/utils.js")) {
+                yFilesMap.set("src/utils.js", true);
+                ydoc
+                  .getText("src/utils.js")
+                  .insert(
+                    0,
+                    "const add = (a, b) => a + b;\nmodule.exports = { add };"
+                  );
+              }
+            }
           }
-        } catch (err) {
-          console.error("Failed to hydrate project:", err);
-          // Fallback to default if DB fails (e.g. offline/new)
+        }
+      } catch (err) {
+        console.error("Failed to hydrate project:", err);
+        // Fallback to default if DB fails (e.g. offline/new)
+        if (yFilesMap.size === 0) {
           yFilesMap.set("index.js", true);
           ydoc
             .getText("index.js")
-            .insert(
-              0,
-              "// Welcome to DevDock!\nconsole.log('Hello World From Demo Project');"
-            );
+            .insert(0, "// Welcome to DevDock!\nconsole.log('Hello World');");
           setFileName("index.js");
-        }
-      } else {
-        if (!yFilesMap.has(fileName)) {
-          const keys = Array.from(yFilesMap.keys());
-          if (keys.length > 0) setFileName(keys[0]);
         }
       }
       setFiles(Array.from(yFilesMap.keys()));
@@ -369,7 +478,12 @@ const IDE = () => {
       return `public class ${safeClassName} {\n    public static void main(String[] args) {\n        System.out.println("Hello Java");\n    }\n}`;
     }
     if (filename.endsWith(".py")) return `print("Hello Python")`;
-    if (filename.endsWith(".js")) return `console.log("Hello JS")`;
+    if (
+      filename.endsWith(".js") ||
+      filename.endsWith(".cjs") ||
+      filename.endsWith(".mjs")
+    )
+      return `console.log("Hello JS")`;
     if (filename.endsWith(".cpp"))
       return `#include <iostream>\n\nint main() {\n    std::cout << "Hello C++" << std::endl;\n    return 0;\n}`;
     if (filename.endsWith(".c"))
@@ -415,15 +529,30 @@ const IDE = () => {
   };
 
   const handleDeleteFile = (name) => {
-    if (isViewMode) return; // Prevent changes in view mode
+    if (isViewMode) return;
     if (window.currentYDoc) {
       const map = window.currentYDoc.getMap("project-files");
-      map.delete(name);
-      if (fileName === name) {
-        const keys = Array.from(map.keys());
-        if (keys.length > 0) setFileName(keys[0]);
-        else setFileName("script.js");
+
+      // Prevent deleting the last file (Pre-check)
+      if (Array.from(map.keys()).length <= 1) {
+        addToast("Cannot delete the last file.", "error", 3000);
+        return;
       }
+
+      confirm({
+        title: "Delete File?",
+        message: `Are you sure you want to permanently delete '${name}'?`,
+        confirmText: "Delete",
+        type: "danger",
+        onConfirm: () => {
+          map.delete(name);
+          if (fileName === name) {
+            const keys = Array.from(map.keys());
+            if (keys.length > 0) setFileName(keys[0]);
+            else setFileName("script.js");
+          }
+        },
+      });
     }
   };
 
@@ -441,6 +570,8 @@ const IDE = () => {
 
   const getLanguage = (filename) => {
     if (filename.endsWith(".js")) return "javascript";
+    if (filename.endsWith(".cjs")) return "javascript";
+    if (filename.endsWith(".mjs")) return "javascript";
     if (filename.endsWith(".py")) return "python";
     if (filename.endsWith(".java")) return "java";
     if (filename.endsWith(".c")) return "c";
@@ -491,12 +622,51 @@ const IDE = () => {
     };
   }, [onMouseMove, stopResizing]);
 
-  const runCode = async () => {
+  // Handle code insertion from AI
+  const handleInsertCode = (code) => {
+    if (!editorRef) return;
+
+    const position = editorRef.getPosition();
+    const selection = editorRef.getSelection();
+
+    editorRef.executeEdits("", [
+      {
+        range: selection || {
+          startLineNumber: position.lineNumber,
+          startColumn: position.column,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        },
+        text: code,
+      },
+    ]);
+
+    // Focus editor after insertion
+    editorRef.focus();
+  };
+
+  const toggleGuestAccess = async () => {
+    const newValue = !isGuestEditAllowed;
+    setIsGuestEditAllowed(newValue);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      await axios.put(`${API_URL}/api/rooms/${roomId}`, {
+        isGuestEditAllowed: newValue,
+        // Backend expects name/lang too? Actually PUT merges updates usually, let's check server logic.
+        // Server logic: `if (name) room.name = name; ...`. Logic looks safe for partial updates.
+      });
+      const status = newValue ? "enabled" : "disabled";
+      addToast(`Guest Edit Access ${status}.`, "success", 2000);
+    } catch (err) {
+      setIsGuestEditAllowed(!newValue); // Revert
+      addToast("Failed to update access settings.", "error", 3000);
+    }
+  };
+
+  const runCode = async (customStdin = null) => {
     if (!editorRef) return;
     setIsRunning(true);
-    // setOutput(["Running..."]); // REMOVED
     setActiveTab("terminal");
-    // setTerminalHistory(prev => [...prev, { type: 'system', content: 'Running...' }]); // Wait for response
 
     // Toast: Started
     const toastId = addToast("Executing code...", "loading", 0);
@@ -504,9 +674,14 @@ const IDE = () => {
     const code = editorRef.getValue();
     const lang = getLanguage(fileName);
 
+    // Use customStdin if passed (interactive flow), else use state stdin
+    const stdinToUse = customStdin !== null ? customStdin : stdin;
+
     // Log for debugging
     if (process.env.NODE_ENV === "development") {
-      console.log(`[EXEC] Sending Request: Language=${lang}`);
+      console.log(
+        `[EXEC] Sending Request: Language=${lang}, Stdin=${stdinToUse}`
+      );
     }
 
     // Calculate all files
@@ -540,7 +715,7 @@ const IDE = () => {
         body: JSON.stringify({
           files: projectFiles,
           language: lang,
-          stdin: stdin,
+          stdin: stdinToUse,
         }),
       });
 
@@ -584,7 +759,43 @@ const IDE = () => {
     }
   };
 
+  /* Terminal State Machine */
+  const [terminalMode, setTerminalMode] = useState("COMMAND"); // COMMAND | AWAITING_STDIN
+
+  // Handle "Run" button click from Header
+  const handleRunClick = () => {
+    // Check if we should skip stdin? For now, let's keep consistency and ask for Stdin.
+    // If user wants to skip, they can just press Enter.
+    setTerminalMode("AWAITING_STDIN");
+    setActiveTab("terminal"); // Ensure terminal is visible
+    setTerminalHistory((prev) => [
+      ...prev,
+      {
+        type: "system",
+        content: "Enter standard input (press Enter to skip):",
+      },
+    ]);
+  };
+
   const handleTerminalCommand = (cmd) => {
+    // Handling Stdin Input Mode
+    if (terminalMode === "AWAITING_STDIN") {
+      setTerminalHistory((prev) => [
+        ...prev,
+        { type: "command", content: cmd }, // Echo the input
+        { type: "system", content: "Input captured. Running..." },
+      ]);
+      setStdin(cmd);
+      setTerminalMode("COMMAND");
+
+      // Trigger run immediately with the captured stdin
+      // We need to set stdin state, but runCode reads 'stdin' state which might not be updated yet due to closure/react batching.
+      // So we pass it directly or use a ref.
+      // Better: Pass stdin argument to runCode.
+      runCode(cmd);
+      return;
+    }
+
     const trimmed = cmd.trim();
     if (!trimmed) return;
 
@@ -600,13 +811,16 @@ const IDE = () => {
       case "clear":
         setTerminalHistory([]);
         break;
+      case "cls":
+        setTerminalHistory([]);
+        break;
       case "help":
         setTerminalHistory((prev) => [
           ...prev,
           {
-            type: "system",
+            type: "output",
             content:
-              "Available commands:\n  ls            List files\n  cat <file>    Read file content\n  run           Run current code\n  clear         Clear terminal\n  whoami        Show current user",
+              "Available commands:\n  ls            List files\n  cat <file>    Read file content\n  run           Run current code (Interactive)\n  run --force   Run without waiting for stdin\n  clear / cls   Clear terminal\n  whoami        Show current user",
           },
         ]);
         break;
@@ -648,8 +862,27 @@ const IDE = () => {
         }
         break;
       case "run":
-        runCode();
+        // Check for args to skip stdin?
+        if (args.length > 0 && args[0] === "--force") {
+          runCode("");
+        } else {
+          // Enter Interactive Stdin Mode
+          setTerminalMode("AWAITING_STDIN");
+          setTerminalHistory((prev) => [
+            ...prev,
+            {
+              type: "system",
+              content: "Enter standard input (press Enter to skip):",
+            },
+          ]);
+        }
         break;
+
+      /* REMOVED: explicit 'stdin' command is now deprecated in favor of interactive flow, 
+         but keeping it for backward compatibility if user wants to use it? 
+         Nah, let's remove it to enforce the new flow as requested "on the go". 
+      */
+
       default:
         setTerminalHistory((prev) => [
           ...prev,
@@ -657,6 +890,10 @@ const IDE = () => {
         ]);
     }
   };
+
+  if (isNotFound) {
+    return <NotFound />;
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
@@ -676,12 +913,17 @@ const IDE = () => {
             fileName={fileName}
             isChatOpen={isChatOpen}
             setIsChatOpen={setIsChatOpen}
-            runCode={runCode}
+            runCode={handleRunClick}
             isRunning={isRunning}
             onToggleSidebar={() => setShowSidebar(!showSidebar)}
             isViewMode={isViewMode}
             isSaving={isSaving}
             lastSaved={lastSaved}
+            isConnected={isConnected}
+            isOwner={isOwner}
+            isGuestEditAllowed={isGuestEditAllowed}
+            onToggleGuestAccess={toggleGuestAccess}
+            isPlayground={isPlayground}
           />
 
           {/* Main Workspace */}
@@ -716,6 +958,7 @@ const IDE = () => {
                   onDelete={handleDeleteFile}
                   onRename={handleRenameFile}
                   isViewMode={isViewMode}
+                  isPlayground={isPlayground}
                 />
               </div>
             )}
@@ -777,6 +1020,8 @@ const IDE = () => {
                 setStdin={setStdin}
                 user={currentUser}
                 roomId={roomId}
+                terminalMode={terminalMode}
+                isPlayground={isPlayground}
               />
             </div>
 
@@ -790,7 +1035,7 @@ const IDE = () => {
 
             {/* Chat Panel */}
             {/* Chat Panel (Desktop: Resizable, Mobile: Drawer) */}
-            {isChatOpen && (
+            {isChatOpen && !isPlayground && (
               <>
                 <div
                   style={{ width: isMobile ? "85%" : layout.chatW }}
@@ -806,6 +1051,9 @@ const IDE = () => {
                     username={currentUser.name}
                     color={currentUser.color}
                     onClose={() => setIsChatOpen(false)}
+                    roomId={roomId}
+                    fileName={fileName}
+                    onInsertCode={handleInsertCode}
                   />
                 </div>
                 {/* Mobile Chat Backdrop */}
