@@ -1,8 +1,8 @@
-# Hexode - Cloud-Based Collaborative IDE
+# Hexode - AI-Powered Cloud-Based Collaborative IDE 
 
-![Hexode](client/public/logo.png)
+<img src="client/public/logo.png" alt="Hexode" width="80"/>
 
-**Hexode** is a modern, cloud-based collaborative IDE that enables real-time code editing, execution, and collaboration. Built with React, Monaco Editor, and Yjs for seamless real-time synchronization.
+**Hexode** is a modern, AI-powered cloud-based collaborative IDE that enables real-time code editing, execution, and collaboration. Built with React, Monaco Editor, and Yjs for seamless real-time synchronization.
 
 **LIVE DEMO**: [Hexode](https://hexode.vercel.app)
 
@@ -18,12 +18,19 @@
 - **Code Execution**: Instant code running via Piston API
 - **File Management**: Create, edit, delete files and folders
 
-### 💬 Collaboration
+### 🤖 HexodeAI
 
-- **Real-Time Chat**: Communicate with collaborators
-- **Share Projects**: Generate editable or read-only links
-- **Live Cursors**: See collaborators' cursor positions
-- **Presence Indicators**: Know who's online
+- **Context-Aware Assistance**: Chat with your codebase using Google Gemini.
+- **Smart Generation**: Insert generated code directly at your cursor.
+- **Debugging & Refactoring**: One-click explanations and fixes.
+- **Code Explanation**: Highlight code to get instant insights.
+
+### 💬 Collaboration & Security
+
+- **Real-Time Chat**: Communicate with collaborators.
+- **Guest Access Control**: Toggle "Guest Edit" permissions on the fly.
+- **Live Cursors & Presence**: See who is online in real-time.
+- **Secure Sharing**: Default private projects with opt-in public access.
 
 ### 🎨 User Experience
 
@@ -109,6 +116,7 @@ MONGO_URI=mongodb://localhost:27017/hexode
 PORT=3001
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
 **Client** (`client/.env`):
@@ -116,6 +124,7 @@ NODE_ENV=development
 ```env
 VITE_API_URL=http://localhost:3001
 VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
+# VITE_WS_URL=ws://... (Optional: Auto-derived from API_URL)
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX  # Optional
 ```
 
@@ -310,4 +319,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Built with ❤️ by the Hexode Team**
+**Built with ❤️ by Sourav Paitandy**
