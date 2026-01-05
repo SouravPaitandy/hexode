@@ -36,9 +36,9 @@ const ProductTour = ({ onComplete }) => {
       position: { top: "10%", right: "20%" },
     },
     {
-      title: "💬 Chat & Collaboration",
+      title: "💬 AI Assistant, Chat & Collaboration",
       description:
-        "Collaborate in real-time with your team! Use the chat to discuss code, share ideas, and work together seamlessly.",
+        "Chat with The Context-Aware HexodeAI Assistant & collaborate in real-time with your team! Use the chat to discuss code, share ideas, and work together seamlessly.",
       highlight: "chat",
       position: { top: "20%", right: "20%" },
     },
