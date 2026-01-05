@@ -36,7 +36,7 @@ function App() {
             <Route path="/docs" element={<Docs />} />
             <Route path="/editor/:roomId" element={<IDE />} />
             {/* Fallback for direct link without ID */}
-            <Route path="/editor/test" element={<IDE />} />
+            <Route path="/editor" element={<IDE />} />
 
             {/* Universal 404 - Must be last */}
             <Route path="*" element={<NotFound />} />
