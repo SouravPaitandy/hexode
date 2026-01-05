@@ -16,6 +16,7 @@ import StatusBar from "../components/ide/StatusBar";
 import NotFound from "./NotFound";
 import { useTheme } from "../context/ThemeContext";
 import { useModal } from "../context/ModalContext";
+import SEO from "../components/SEO";
 
 const IDE = () => {
   const { theme } = useTheme();
@@ -312,6 +313,7 @@ const IDE = () => {
       // Always fetch room metadata to check ownership, even if Yjs is synced
       try {
         let dbFiles = null;
+        let projectLang = "JavaScript";
 
         if (!isPlayground) {
           // Validation: If not playground/demo and invalid ID format -> 404
@@ -337,6 +339,9 @@ const IDE = () => {
               setIsGuestEditAllowed(res.data.isGuestEditAllowed);
             }
 
+            if (res.data?.lang) {
+              projectLang = res.data.lang;
+            }
             dbFiles = res.data?.files;
           } catch (e) {
             // Note: We do NOT 404 here anymore.
@@ -376,16 +381,37 @@ const IDE = () => {
                 setFileName("playground.js");
               }
             } else if (room === "monaco-demo" || !dbFiles) {
-              yFilesMap.set("index.js", true);
-              ydoc
-                .getText("index.js")
-                .insert(
-                  0,
-                  "// Welcome to Hexode!\nconsole.log('Hello World');"
-                );
-              setFileName("index.js");
+              let filename = "index.js";
+              let content =
+                "// Welcome to Hexode!\nconsole.log('Hello World');";
 
-              if (!yFilesMap.has("src/utils.js")) {
+              // Language-specific defaults
+              if (projectLang === "Java") {
+                filename = "Main.java";
+                content =
+                  'public class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello from Java!");\n  }\n}';
+              } else if (projectLang === "Python") {
+                filename = "main.py";
+                content = 'print("Hello from Python!")';
+              } else if (projectLang === "C++") {
+                filename = "main.cpp";
+                content =
+                  '#include <iostream>\n\nint main() {\n  std::cout << "Hello from C++" << std::endl;\n  return 0;\n}';
+              } else if (projectLang === "C") {
+                filename = "main.c";
+                content =
+                  '#include <stdio.h>\n\nint main() {\n  printf("Hello from C\\n");\n  return 0;\n}';
+              }
+
+              yFilesMap.set(filename, true);
+              ydoc.getText(filename).insert(0, content);
+              setFileName(filename);
+
+              // Add utils.js only for JavaScript projects as a bonus/demo
+              if (
+                projectLang === "JavaScript" &&
+                !yFilesMap.has("src/utils.js")
+              ) {
                 yFilesMap.set("src/utils.js", true);
                 ydoc
                   .getText("src/utils.js")
@@ -897,6 +923,21 @@ const IDE = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
+      <SEO
+        title={
+          isPlayground ? "Hexode Playground - Online IDE & Compiler" : "Editor"
+        }
+        description={
+          isPlayground
+            ? "Run Java, Python, C++, C, and JavaScript code online instantly. No setup, instant execution for DSA and interviews."
+            : "Real-time Collaborative Code Editor. Build software together with Hexode."
+        }
+        keywords={
+          isPlayground
+            ? "online compiler, online ide, java compiler, python online, c++ compiler, dsa practice, interview sandbox"
+            : "cloud ide, collaborative editor, pair programming"
+        }
+      />
       {/* Auth Loading State - Critical for preventing Guest Fallback on Refresh */}
       {!isLoaded ? (
         <div className="h-screen w-full flex items-center justify-center bg-background text-foreground">

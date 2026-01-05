@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 import ThemeToggle from "../components/ThemeToggle";
+import SEO from "../components/SEO";
 
 const Landing = () => {
   const { scrollY } = useScroll();
@@ -79,6 +80,10 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden selection:bg-blue-500/30">
+      <SEO
+        title="Hexode - The Future of Cloud Coding"
+        description="Experience the next generation of cloud IDEs. Zero setup, real-time collaboration, and AI-powered coding assistance."
+      />
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
@@ -89,15 +94,14 @@ const Landing = () => {
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 border-b border-border bg-surface/70 backdrop-blur-xl supports-backdrop-filter:bg-surface/60">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
-            {/* <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
-                            <Code2 size={20} className="text-gray-200" />
-                        </div> */}
-            <img src="logo.png" alt="</>" className="w-10 h-10" />
-            <span>Hexode</span>
-          </div>
+          <a href="#hero" onClick={(e) => handleScroll(e, "#hero")}>
+            <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
+              <img src="logo.png" alt="</>" className="w-9 h-9" />
+              <span>Hexode</span>
+            </div>
+          </a>
 
-          <div className="hidden md:flex gap-8 text-sm font-medium text-muted">
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted">
             <a
               href="#architecture"
               onClick={(e) => handleScroll(e, "#architecture")}
@@ -114,7 +118,7 @@ const Landing = () => {
             </a>
             <Link
               to="/docs"
-              className="hover:text-foreground transition-colors"
+              className="text-foreground transition-colors font-semibold"
             >
               Docs
             </Link>
@@ -122,9 +126,12 @@ const Landing = () => {
               href="https://github.com/souravpaitandy/hexode"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
+              className="text-foreground transition-colors font-semibold"
             >
-              Source
+              <span className="flex items-center gap-2 border border-border rounded-full px-2 py-1">
+                <Star size={18} fill="yellow" className="text-yellow-500" />{" "}
+                Star us on <FaGithub size={18} />
+              </span>
             </a>
           </div>
 
@@ -132,7 +139,7 @@ const Landing = () => {
             <ThemeToggle />
             <Link
               to="/dashboard"
-              className="bg-white dark:bg-white text-black px-5 py-2 rounded-full font-medium hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 hidden md:block"
+              className="bg-black dark:bg-white text-gray-100 dark:text-black px-5 py-2 rounded-full font-medium hover:bg-black/80 dark:hover:bg-zinc-200 transition-colors shadow-lg shadow-white/10 hidden md:block"
             >
               Get Started
             </Link>
@@ -141,7 +148,10 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto text-center z-10">
+      <section
+        id="hero"
+        className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto text-center z-10"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -184,15 +194,13 @@ const Landing = () => {
             >
               Start Coding Now
             </Link>
-            <a
-              href="https://github.com/souravpaitandy/hexode"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3.5 bg-surface border border-border text-muted hover:text-foreground hover:bg-card rounded-xl font-medium text-base shadow-lg shadow-black/5 dark:shadow-black/50 transition-all w-full sm:w-auto flex items-center justify-center gap-2"
+            <Link
+              to="/editor/test"
+              className="px-8 py-3.5 bg-surface border border-border text-foreground hover:bg-card rounded-xl font-bold text-base shadow-lg shadow-black/5 dark:shadow-black/50 transition-all w-full sm:w-auto flex items-center justify-center gap-2"
             >
-              <Star size={18} fill="yellow" className="text-yellow-500" /> Star
-              us on <FaGithub size={18} />
-            </a>
+              <Code2 size={18} />
+              Try Playground
+            </Link>
           </div>
         </motion.div>
 

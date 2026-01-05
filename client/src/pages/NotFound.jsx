@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Terminal, Home, Code2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import SEO from "../components/SEO";
 
 const NotFound = () => {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ const NotFound = () => {
 
   return (
     <div className="h-screen w-screen bg-background flex flex-col items-center justify-center p-4 overflow-hidden relative selection:bg-blue-500/30">
+      <SEO title="NOT FOUND!" description="" />
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
         <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
@@ -116,7 +118,7 @@ const NotFound = () => {
         >
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg border border-border bg-card hover:bg-surface hover:border-zinc-500 transition-all text-muted hover:text-foreground font-medium"
+            className="cursor-pointer flex items-center gap-2 px-6 py-3 rounded-lg border border-border bg-card hover:bg-surface hover:border-zinc-500 transition-all text-muted hover:text-foreground font-medium"
           >
             <ArrowLeft size={18} />
             Go Back

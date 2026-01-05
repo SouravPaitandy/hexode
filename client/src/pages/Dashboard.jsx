@@ -13,12 +13,14 @@ import {
   Layout,
   Search,
   Zap,
+  X,
 } from "lucide-react";
 import ThemeToggle from "../components/ThemeToggle";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import axios from "axios";
 import { useModal } from "../context/ModalContext";
 import { useToast } from "../components/Toast";
+import SEO from "../components/SEO";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +30,14 @@ const Dashboard = () => {
   const [editName, setEditName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { addToast } = useToast();
+
+  // Create Modal State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectLang, setNewProjectLang] = useState("JavaScript");
+
+  const [filterLang, setFilterLang] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
 
   const timeAgo = (dateString) => {
     if (dateString === "Demo") return "Demo Project";
@@ -176,18 +186,27 @@ const Dashboard = () => {
     }
   }, [isSignedIn, user?.id, isLoaded]); // Depend on user.id to ensure it's loaded
 
-  const handleNewProject = async () => {
+  const handleNewProject = () => {
+    setNewProjectName("");
+    setNewProjectLang("JavaScript");
+    setIsCreateOpen(true);
+  };
+
+  const createProject = async (e) => {
+    if (e) e.preventDefault();
     const id = "proj-" + Math.floor(Math.random() * 100000);
+    const safeName = newProjectName.trim() || "Untitled Project";
     const newProject = {
       id,
-      roomId: id, // Consistency
-      name: id,
-      lang: "JavaScript",
+      roomId: id,
+      name: safeName,
+      lang: newProjectLang,
       createdAt: new Date().toISOString(),
     };
 
+    setIsCreateOpen(false);
+
     if (isSignedIn) {
-      // Save to DB
       try {
         const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
         await axios.post(`${API_URL}/api/rooms`, {
@@ -196,12 +215,13 @@ const Dashboard = () => {
           name: newProject.name,
           lang: newProject.lang,
         });
-        setProjects([newProject, ...projects]); // Optimistic update
+        setProjects([newProject, ...projects]);
       } catch (err) {
         console.error(err);
+        addToast("Failed to create project", "error");
+        return;
       }
     } else {
-      // Save to Local
       const updated = [newProject, ...projects];
       setProjects(updated);
       localStorage.setItem("devdock-projects", JSON.stringify(updated));
@@ -273,12 +293,30 @@ const Dashboard = () => {
     setEditingId(null);
   };
 
-  const filteredProjects = projects.filter((p) =>
-    p.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProjects = projects
+    .filter((p) => {
+      const matchesSearch = p.name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesLang = filterLang === "All" || p.lang === filterLang;
+      return matchesSearch && matchesLang;
+    })
+    .sort((a, b) => {
+      if (sortBy === "newest")
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === "oldest")
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === "a-z") return a.name.localeCompare(b.name);
+      if (sortBy === "z-a") return b.name.localeCompare(a.name);
+      return 0;
+    });
 
   return (
     <div className="bg-background min-h-screen text-foreground font-sans relative flex flex-col">
+      <SEO
+        title="Dashboard"
+        description="Manage your Hexode projects. Create, edit, and collaborate on code instantly."
+      />
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-4 border-b border-border flex justify-between items-center bg-surface/80 backdrop-blur-md">
         <a href="/">
@@ -286,11 +324,17 @@ const Dashboard = () => {
             {/* <div className="bg-linear-to-br from-blue-600 to-cyan-400 p-2 rounded-xl flex shadow-lg shadow-blue-500/30">
                     <Code size={22} color="white" />
                 </div> */}
-            <img src="logo.png" alt="</>" className="w-10 h-10" />
+            <img src="logo.png" alt="</>" className="w-9 h-9" />
             Hexode
           </div>
         </a>
         <div className="flex gap-5 items-center">
+          <Link
+            to="/docs"
+            className="text-sm font-medium text-muted hover:text-foreground transition-colors hidden md:block"
+          >
+            Docs
+          </Link>
           <div className="hidden md:block relative">
             <Search
               size={16}
@@ -326,6 +370,41 @@ const Dashboard = () => {
               Welcome to Your Workspace {isSignedIn ? user.fullName : "Coder"}
             </h1>
             <p className="text-muted text-lg">Manage your projects.</p>
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8 justify-between items-end md:items-center">
+          {/* Language Filter */}
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar">
+            {["All", "JavaScript", "Python", "Java", "C++", "C"].map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setFilterLang(lang)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  filterLang === lang
+                    ? "bg-foreground text-background"
+                    : "bg-card border border-border text-muted hover:border-zinc-500"
+                }`}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Control */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-zinc-500 cursor-pointer text-foreground"
+            >
+              <option value="newest">Last Edited (Newest)</option>
+              <option value="oldest">Last Edited (Oldest)</option>
+              <option value="a-z">Name (A-Z)</option>
+              <option value="z-a">Name (Z-A)</option>
+            </select>
           </div>
         </div>
 
@@ -459,6 +538,89 @@ const Dashboard = () => {
       <div className="absolute bottom-6 w-full text-center text-zinc-600 text-xs font-mono pointer-events-none">
         HEXODE_SYSTEM_V2.0
       </div>
+
+      <AnimatePresence>
+        {isCreateOpen && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsCreateOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card w-full max-w-md border border-border rounded-2xl shadow-2xl relative z-10 p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Create New Project</h2>
+                <button
+                  onClick={() => setIsCreateOpen(false)}
+                  className="text-muted hover:text-foreground"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={createProject} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-muted mb-1">
+                    Project Name
+                  </label>
+                  <input
+                    autoFocus
+                    type="text"
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="e.g. Awesome Algorithm"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-1">
+                    Language
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["JavaScript", "Python", "Java", "C++", "C"].map(
+                      (lang) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setNewProjectLang(lang)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                            newProjectLang === lang
+                              ? "bg-blue-500/10 border-blue-500 text-blue-500"
+                              : "bg-surface border-border text-muted hover:border-zinc-500"
+                          }`}
+                        >
+                          {lang}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateOpen(false)}
+                    className="px-4 py-2 rounded-lg hover:bg-surface text-muted font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20"
+                  >
+                    Create Project
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
