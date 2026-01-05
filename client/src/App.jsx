@@ -7,8 +7,9 @@ import IDE from "./pages/IDE";
 import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
-import Docs from "./pages/Docs"; // Import Docs
+import Docs from "./pages/Docs";
 import { ModalProvider } from "./context/ModalContext";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -35,11 +36,12 @@ function App() {
             <Route path="/docs" element={<Docs />} />
             <Route path="/editor/:roomId" element={<IDE />} />
             {/* Fallback for direct link without ID */}
-            <Route path="/editor" element={<IDE />} />
+            <Route path="/editor/test" element={<IDE />} />
 
             {/* Universal 404 - Must be last */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Analytics />
         </BrowserRouter>
       </ModalProvider>
     </ErrorBoundary>
