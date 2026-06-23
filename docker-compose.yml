@@ -8,7 +8,8 @@ services:
       - "3001:3001" # API
       - "1234:1234" # WebSocket
     environment:
-      - PISTON_URL=https://emkc.org/api/v2/piston/execute
+      # Optional: set PISTON_URL to use a self-hosted Piston instance instead of Judge0 CE
+      # - PISTON_URL=http://piston:2000/api/v2/execute
     networks:
       - devdock-network
 

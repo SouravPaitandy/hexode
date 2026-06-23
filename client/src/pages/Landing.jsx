@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  AnimatePresence,
+} from "framer-motion";
 import Lenis from "lenis";
 import { Link } from "react-router-dom";
 import {
@@ -19,21 +24,102 @@ import {
   CheckCircle,
   Star,
   Shield,
+  Coffee,
 } from "lucide-react";
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaJava } from "react-icons/fa";
 import ThemeToggle from "../components/ThemeToggle";
 import SEO from "../components/SEO";
+import { SiCss3, SiJavascript, SiPython } from "react-icons/si";
+
+const mockFiles = [
+  {
+    name: "demo.py",
+    icon: SiPython,
+    iconColor: "text-blue-400",
+    command: "python demo.py",
+    output: "Hello, Reviewer!",
+    headerHTML: (
+      <>
+        <div className="text-purple-400">
+          def <span className="text-yellow-200">main</span>():
+        </div>
+        <div className="pl-6 text-emerald-600/80 italic">
+          # Your code runs instantly
+        </div>
+      </>
+    ),
+    fullText: "print('Hello, Reviewer!')",
+    footerHTML: null,
+  },
+  {
+    name: "index.js",
+    icon: SiJavascript,
+    iconColor: "text-[#f1e05a]",
+    command: "node index.js",
+    output: "Hexode is incredibly fast!",
+    headerHTML: (
+      <>
+        <div className="text-emerald-600/80 italic">
+          // Real-time collaborative IDE
+        </div>
+      </>
+    ),
+    fullText: "console.log('Hexode is incredibly fast!');",
+    footerHTML: null,
+  },
+  {
+    name: "App.java",
+    icon: FaJava,
+    iconColor: "text-[#b07219]",
+    command: "javac App.java && java App",
+    output: "AI Native IDE",
+    headerHTML: (
+      <>
+        <div className="text-purple-400">
+          public class <span className="text-yellow-200">App</span> {"{"}
+        </div>
+        <div className="pl-6">
+          <span className="text-purple-400">public static void</span>{" "}
+          <span className="text-yellow-200">main</span>(String[] args) {"{"}
+        </div>
+        <div className="pl-12 text-emerald-600/80 italic">
+          // Write once, run anywhere in cloud
+        </div>
+      </>
+    ),
+    fullText: 'System.out.println("AI Native IDE");',
+    footerHTML: (
+      <>
+        <div className="pl-6">{"}"}</div>
+        <div>{"}"}</div>
+      </>
+    ),
+  },
+];
 
 const Landing = () => {
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 700], [0, 100]);
-  const opacity = useTransform(scrollY, [0, 350, 700], [0.3, 1, 0]);
+  const y1 = useTransform(scrollY, [0, 1000], [0, 100]);
+  const opacity = useTransform(scrollY, [0, 600, 1000], [0.3, 1, 0]);
 
+  const [activeMockIndex, setActiveMockIndex] = useState(0);
+  const activeMock = mockFiles[activeMockIndex];
   const [typedText, setTypedText] = useState("");
-  const fullText = "print('Hello, Reviewer!')";
+
+  const [pillTextIndex, setPillTextIndex] = useState(0);
+  const pillTexts = ["Get Set Code!", "Version 3.0 is live 🚀"];
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setPillTextIndex((prev) => (prev + 1) % pillTexts.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    setTypedText("");
     let i = 0;
+    const fullText = activeMock.fullText;
     const interval = setInterval(() => {
       setTypedText(fullText.slice(0, i + 1));
       i++;
@@ -41,9 +127,9 @@ const Landing = () => {
         i = 0;
         setTimeout(() => setTypedText(""), 2000);
       }
-    }, 150);
+    }, 100);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeMockIndex]);
 
   const lenisRef = useRef(null);
 
@@ -81,18 +167,19 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden selection:bg-blue-500/30">
       <SEO
-        title="Hexode - The Future of Cloud Coding"
-        description="Experience the next generation of cloud IDEs. Zero setup, real-time collaboration, and AI-powered coding assistance."
+        title="The Future of Cloud Coding"
+        description="Experience the next generation of cloud IDEs. Zero setup, real-time collaboration, and AI-powered coding assistance. Write and run Java, Python, JavaScript, C++ and more."
+        keywords="cloud ide, online compiler, collaborative coding, real-time editor, hexode, pair programming, online code editor"
       />
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[800px] h-[800px] bg-indigo-900/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[140px] animate-pulse dark:mix-blend-screen" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[150px] dark:mix-blend-screen" />
+        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[800px] h-[800px] bg-indigo-500/15 rounded-full blur-[120px] dark:mix-blend-screen" />
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 border-b border-border bg-surface/70 backdrop-blur-xl supports-backdrop-filter:bg-surface/60">
+      <nav className="fixed top-0 w-full z-50 glass-panel border-x-0 border-t-0 rounded-none">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="#hero" onClick={(e) => handleScroll(e, "#hero")}>
             <div className="flex items-center gap-3 font-bold text-xl tracking-tight">
@@ -126,13 +213,26 @@ const Landing = () => {
               href="https://github.com/souravpaitandy/hexode"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground transition-colors font-semibold"
+              title="Star us on GitHub"
+              className="flex items-center gap-1.5 text-muted hover:text-foreground transition-colors font-medium group"
             >
-              <span className="flex items-center gap-2 border border-border rounded-full px-2 py-1">
-                <Star size={18} fill="yellow" className="text-yellow-500" />{" "}
-                Star us on <FaGithub size={18} />
-              </span>
+              <Star
+                size={16}
+                className="text-yellow-500 group-hover:fill-yellow-500 transition-all"
+              />
+              GitHub
             </a>
+            <Link
+              to="/sponsor"
+              title="Support the Project"
+              className="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors font-medium group"
+            >
+              <Coffee
+                size={16}
+                className="group-hover:scale-110 transition-transform"
+              />
+              Sponsor
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
@@ -157,12 +257,29 @@ const Landing = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border mb-8 text-xs font-medium text-muted hover:bg-card transition-colors cursor-default">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            v2.0 Public Beta
+          <div className="relative inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface border border-border mb-8 text-sm font-medium text-muted hover:bg-card transition-colors cursor-default overflow-hidden">
+            {/* Shimmer/Sweep Animation */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+              animate={{ x: ["-150%", "150%"] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
+            />
+
+            {/* Text Animation */}
+            <div className="relative w-[150px] h-5 flex items-center justify-center overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={pillTextIndex}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -20, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute whitespace-nowrap"
+                >
+                  {pillTexts[pillTextIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </div>
           </div>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-6 leading-[1.1]">
@@ -189,17 +306,17 @@ const Landing = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
             <Link
-              to="/dashboard"
+              to="/play"
               className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-gray-300 rounded-xl font-bold text-base shadow-lg shadow-blue-500/25 transition-all w-full sm:w-auto flex items-center justify-center gap-2"
             >
-              Start Coding Now
+              <Code2 size={18} />
+              Open Playground
             </Link>
             <Link
-              to="/editor/test"
+              to="/dashboard"
               className="px-8 py-3.5 bg-surface border border-border text-foreground hover:bg-card rounded-xl font-bold text-base shadow-lg shadow-black/5 dark:shadow-black/50 transition-all w-full sm:w-auto flex items-center justify-center gap-2"
             >
-              <Code2 size={18} />
-              Try Playground
+              Go to Dashboard
             </Link>
           </div>
         </motion.div>
@@ -207,10 +324,10 @@ const Landing = () => {
         {/* Mock IDE Interface */}
         <motion.div
           style={{ y: y1, opacity }}
-          className="relative max-w-5xl mx-auto rounded-xl border border-border bg-surface/50 backdrop-blur-sm shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 overflow-hidden"
+          className="relative select-none max-w-5xl mx-auto rounded-2xl glass-panel shadow-[0_0_50px_rgba(59,130,246,0.15)] overflow-hidden"
         >
           {/* Window Controls */}
-          <div className="h-10 bg-surface/80 border-b border-border flex items-center px-4 gap-2">
+          <div className="h-10 border-b border-border flex items-center px-4 gap-2 bg-black/20">
             <div className="flex gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500/80" />
               <div className="w-3 h-3 rounded-full bg-amber-500/80" />
@@ -223,61 +340,150 @@ const Landing = () => {
 
           <div className="flex h-[400px] md:h-[500px] text-left">
             {/* Mock Sidebar */}
-            <div className="hidden md:block w-64 border-r border-border p-4 space-y-3 bg-card/30">
-              <div className="flex items-center gap-2 text-muted text-sm">
-                <Terminal size={14} /> <span>index.js</span>
+            <div className="hidden md:block w-56 border-r border-border p-3 space-y-1 bg-card/30">
+              <div className="text-xs font-bold text-muted uppercase tracking-wider px-2 mb-3 mt-2">
+                Explorer
               </div>
-              <div className="flex items-center gap-2 text-muted text-sm">
-                <Layout size={14} /> <span>style.css</span>
+              {mockFiles.map((file, idx) => {
+                const Icon = file.icon;
+                const isActive = activeMockIndex === idx;
+                return (
+                  <div
+                    key={file.name}
+                    onClick={() => setActiveMockIndex(idx)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer transition-colors ${
+                      isActive
+                        ? "text-blue-400 bg-blue-500/10 border border-blue-500/20 font-medium"
+                        : "text-muted hover:bg-foreground/5"
+                    }`}
+                  >
+                    <Icon
+                      className={isActive ? "" : file.iconColor}
+                      size={14}
+                    />
+                    <span>{file.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Main Editor Area */}
+            <div className="flex-1 flex flex-col bg-background/50 border-r border-border">
+              {/* Code Area */}
+              <div className="flex-1 p-6 font-mono text-sm md:text-base text-foreground relative">
+                {activeMock.headerHTML}
+                <div
+                  className={
+                    activeMock.name === "App.java"
+                      ? "pl-12"
+                      : activeMock.name === "demo.py"
+                        ? "pl-6"
+                        : ""
+                  }
+                >
+                  {typedText}
+                  {typedText.length === activeMock.fullText.length && (
+                    <span className="text-muted/40 italic ml-2 hidden sm:inline">
+                      # Press Tab to accept AI suggestion
+                    </span>
+                  )}
+                  <span className="animate-pulse text-blue-400">|</span>
+                </div>
+                {activeMock.footerHTML}
               </div>
-              <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-2 py-1.5 rounded text-sm border border-emerald-500/20">
-                <Code2 size={14} /> <span>demo.py</span>
+
+              {/* Terminal Strip */}
+              <div className="h-32 border-t border-border bg-card/50 p-4 font-mono text-xs md:text-sm flex flex-col">
+                <div className="flex items-center gap-2 text-muted mb-2 uppercase text-[10px] tracking-widest font-bold">
+                  <Terminal size={12} /> Terminal
+                </div>
+                <div className="text-emerald-400 flex-1 overflow-hidden">
+                  <span className="text-blue-400">$</span> {activeMock.command}
+                  <br />
+                  <span className="text-foreground mt-1 block">
+                    {activeMock.output}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Code Area */}
-            <div className="flex-1 p-6 font-mono text-sm md:text-base text-foreground bg-background/50">
-              <div className="text-purple-400">
-                def <span className="text-yellow-200">main</span>():
+            {/* Mock AI Assistant Panel */}
+            <div className="hidden lg:flex w-72 bg-card/30 flex-col">
+              <div className="h-10 border-b border-border flex items-center px-4 gap-2 text-xs font-bold text-muted uppercase tracking-wider">
+                <Sparkles size={14} className="text-purple-500" /> Hexode AI
               </div>
-              <div className="pl-6 text-emerald-600/80 italic">
-                # Your code runs instantly
+              <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden relative">
+                <div className="bg-background border border-border rounded-lg p-3 text-xs text-muted shadow-sm">
+                  <p className="font-medium text-foreground mb-1">User</p>
+                  <p>Can you optimize this main function?</p>
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-muted shadow-sm">
+                  <p className="font-medium text-blue-400 mb-1 flex items-center gap-1">
+                    <Sparkles size={10} /> Hexode AI
+                  </p>
+                  <p>
+                    Certainly! I've reviewed your code. Here is an optimized
+                    version using generators...
+                  </p>
+                  <div className="mt-2 bg-[#0d1117] rounded p-2 border border-border font-mono text-[10px] text-gray-300">
+                    <span className="text-purple-400">def</span>{" "}
+                    <span className="text-yellow-200">main</span>():
+                    <br />
+                    &nbsp;&nbsp;
+                    <span className="text-purple-400">yield from</span>{" "}
+                    range(10)
+                  </div>
+                </div>
               </div>
-              <div className="pl-6">
-                {typedText}
-                <span className="animate-pulse text-blue-400">|</span>
+              <div className="p-3 border-t border-border">
+                <div className="h-8 bg-background border border-border rounded flex items-center px-3 text-xs text-muted">
+                  Ask Hexode AI...
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
       </section>
 
-      {/* Architecture / Tech Stack */}
+      {/* Built For Speed Section */}
       <section
         id="architecture"
-        className="py-20 border-y border-border bg-surface/30"
+        className="py-24 border-y border-border bg-surface/30"
       >
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <p className="text-sm font-bold tracking-widest text-muted uppercase mb-10">
-            Powered by Modern Primitives
-          </p>
-          <div className="flex flex-wrap justify-center gap-6 sm:gap-10 opacity-70">
-            {[
-              "React 18+",
-              "Node.js",
-              "Y.js CRDT",
-              "Vite",
-              "Monaco",
-              "MongoDB",
-            ].map((tech) => (
-              <div
-                key={tech}
-                className="flex items-center gap-2 text-muted font-medium"
-              >
-                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></div>
-                {tech}
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="flex flex-col items-center text-center p-6 glass-panel rounded-2xl">
+              <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mb-4">
+                <Zap size={24} />
               </div>
-            ))}
+              <h3 className="text-xl font-bold mb-2">Instant Compute</h3>
+              <p className="text-muted text-sm leading-relaxed">
+                Execute C++, Java, Python, and JS instantly in isolated
+                environments without installing local toolchains.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-6 glass-panel rounded-2xl">
+              <div className="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center mb-4">
+                <Users size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Multiplayer Sync</h3>
+              <p className="text-muted text-sm leading-relaxed">
+                Zero-latency state synchronization. See cursors and code changes
+                in real-time with zero conflicts.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center text-center p-6 glass-panel rounded-2xl">
+              <div className="w-12 h-12 bg-pink-500/20 text-pink-400 rounded-full flex items-center justify-center mb-4">
+                <Sparkles size={24} />
+              </div>
+              <h3 className="text-xl font-bold mb-2">AI-Powered</h3>
+              <p className="text-muted text-sm leading-relaxed">
+                Context-aware HexodeAI built directly into the editor to explain
+                code, find bugs, and refactor.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -297,9 +503,9 @@ const Landing = () => {
           {/* Card 1: Collab (Large) */}
           <motion.div
             whileHover={{ y: -5 }}
-            className="md:col-span-2 p-8 rounded-3xl bg-card/30 border border-border hover:border-blue-500/30 transition-colors relative overflow-hidden group"
+            className="md:col-span-2 p-8 rounded-3xl glass-panel hover:border-blue-500/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-300 relative overflow-hidden group"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-all duration-500"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/30 transition-all duration-500"></div>
             <div className="relative z-10">
               <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-6 text-blue-400">
                 <Users size={24} />
@@ -316,9 +522,9 @@ const Landing = () => {
           {/* Card 2: Polyglot (Vertical) */}
           <motion.div
             whileHover={{ y: -5 }}
-            className="md:row-span-2 p-8 rounded-3xl bg-card/30 border border-border hover:border-emerald-500/30 transition-colors relative overflow-hidden group"
+            className="md:row-span-2 p-8 rounded-3xl glass-panel hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] transition-all duration-300 relative overflow-hidden group"
           >
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 group-hover:bg-emerald-500/30 transition-all duration-500"></div>
             <div className="relative z-10 h-full flex flex-col">
               <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-6 text-emerald-400">
                 <Terminal size={24} />
@@ -355,9 +561,9 @@ const Landing = () => {
           {/* Card 3: HexodeAI */}
           <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 rounded-3xl bg-card/30 border border-border hover:border-pink-500/30 transition-colors group relative overflow-hidden"
+            className="p-8 rounded-3xl glass-panel hover:border-pink-500/50 hover:shadow-[0_0_30px_rgba(236,72,153,0.2)] transition-all duration-300 group relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:bg-pink-500/20 transition-all"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:bg-pink-500/30 transition-all duration-500"></div>
             <div className="relative z-10">
               <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-6 text-pink-400">
                 <Cpu size={24} />
@@ -373,9 +579,9 @@ const Landing = () => {
           {/* Card 4: Access Control */}
           <motion.div
             whileHover={{ y: -5 }}
-            className="p-8 rounded-3xl bg-card/30 border border-border hover:border-amber-500/30 transition-colors group relative overflow-hidden"
+            className="p-8 rounded-3xl glass-panel hover:border-amber-500/50 hover:shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all duration-300 group relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/20 transition-all"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:bg-amber-500/30 transition-all duration-500"></div>
             <div className="relative z-10">
               <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-6 text-amber-400">
                 <Shield size={24} />
@@ -399,20 +605,34 @@ const Landing = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="relative z-10 max-w-3xl mx-auto"
+          className="relative z-10 max-w-4xl mx-auto glass-panel p-12 md:p-20 rounded-[2.5rem] border border-blue-500/20 shadow-[0_0_80px_rgba(59,130,246,0.1)] overflow-hidden group"
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          {/* Subtle Hover Glow inside the card */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-blue-500/20 blur-[120px] rounded-full pointer-events-none transition-opacity duration-700 opacity-50 group-hover:opacity-100"></div>
+
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 relative z-10 tracking-tight">
             Ready to build something?
           </h2>
-          <p className="text-xl text-muted mb-10">
+          <p className="text-xl text-muted mb-10 relative z-10 max-w-2xl mx-auto">
             Join the session and experience the future of collaborative coding.
           </p>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-2 px-10 py-4 bg-foreground text-background rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(255,255,255,0.3)]"
-          >
-            Launch Editor
-          </Link>
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_40px_rgba(59,130,246,0.4)] w-full sm:w-auto justify-center"
+            >
+              Launch Editor
+            </Link>
+            <a
+              href="https://github.com/souravpaitandy/hexode"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-10 py-4 bg-surface/50 border border-border hover:bg-card text-foreground rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-lg w-full sm:w-auto justify-center backdrop-blur-md"
+            >
+              <Star size={20} className="text-yellow-500 fill-yellow-500" />
+              Star on GitHub
+            </a>
+          </div>
         </motion.div>
       </section>
 
@@ -423,7 +643,7 @@ const Landing = () => {
             <div className="flex items-center gap-2">
               <img src="logo.png" alt="</>" className="w-5 h-5" />
               <span className="text-foreground font-semibold font-mono">
-                HEXODE v2.0
+                HEXODE v3.0
               </span>
               <span>© {new Date().getFullYear()}</span>
             </div>

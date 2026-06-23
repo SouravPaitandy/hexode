@@ -11,38 +11,54 @@
   --color-foreground: var(--text-main);
   --color-muted: var(--text-muted);
   
-  --color-primary: #007acc;
-  --color-primary-hover: #0098ff;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  
+  --color-accent: var(--color-accent);
+  --color-accent-glow: var(--color-accent-glow);
 
   --font-sans: 'Inter', sans-serif;
   --font-mono: "Fira Code", monospace;
+
+  /* Premium animations */
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+  
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 10px -5px var(--color-accent-glow);
+    }
+    to {
+      box-shadow: 0 0 20px 5px var(--color-accent-glow);
+    }
+  }
 }
 
 :root {
-  /* Dark Mode (Default) */
-  --bg-main: #09090b;
-  --bg-surface: #18181b;
-  --bg-card: #27272a;
-  --border-color: #3f3f46;
+  /* Premium Dark Mode (Midnight Blue / OLED Hybrid) */
+  --bg-main: #020617; /* Slate 950 - deep dark blue */
+  --bg-surface: #0f172a; /* Slate 900 */
+  --bg-card: #1e293b; /* Slate 800 */
+  --border-color: rgba(255, 255, 255, 0.08); /* Subtle glass borders */
   
-  --text-main: #f4f4f5;
-  --text-muted: #a1a1aa;
+  --text-main: #f8fafc; /* Slate 50 */
+  --text-muted: #94a3b8; /* Slate 400 */
+  
+  --color-accent: #3b82f6; /* Blue 500 */
+  --color-accent-glow: rgba(59, 130, 246, 0.3); 
 }
 
 [data-theme="light"] {
-  /* Light Mode */
-  --bg-main: #ffffff;
-  --bg-surface: #f8fafc; /* Slate-50 - Cleaner than Zinc-100 */
-  --bg-card: #ffffff;
-  --border-color: #cbd5e1; /* Slate-300 - Better contrast for borders */
+  /* Premium Light Mode */
+  --bg-main: #f8fafc; /* Slate 50 */
+  --bg-surface: #ffffff; 
+  --bg-card: #f1f5f9; /* Slate 100 */
+  --border-color: rgba(0, 0, 0, 0.08); 
 
-  --text-main: #0f172a; /* Slate-900 */
-  --text-muted: #64748b; /* Slate-500 - more readable */
-}
-
-@theme {
-   /* ... existing variables ... */
-   --color-accent: var(--bg-surface); /* fallback */
+  --text-main: #0f172a; /* Slate 900 */
+  --text-muted: #64748b; /* Slate 500 */
+  
+  --color-accent: #2563eb; /* Blue 600 */
+  --color-accent-glow: rgba(37, 99, 235, 0.2);
 }
 
 * {
@@ -55,23 +71,22 @@ body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-main);
   color: var(--text-main);
-  transition: background-color 0.3s, color 0.3s;
+  transition: background-color 0.4s ease, color 0.4s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
+/* Premium Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-surface); 
+  background: transparent; 
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color); 
-  border-radius: 5px;
-  border: 2px solid var(--bg-surface);
+  background: var(--border-color); /* Matches the glass effect */
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted); 
@@ -79,26 +94,40 @@ body {
 
 /* Selection Color */
 ::selection {
-  background: rgba(0, 122, 204, 0.3);
-  color: white;
+  background: var(--color-accent-glow);
+  color: #ffffff;
 }
 
 /* Base Remote Cursor Styles */
-/* Note: Colors and Content are injected dynamically via JS now */
 .yRemoteSelectionHead {
   position: absolute;
   height: 100%;
   box-sizing: border-box;
-  border-left: 2px solid; /* Color handled by JS */
+  border-left: 2px solid; 
+  transition: border-color 0.2s ease;
 }
 
-/* Hide default cursor bits we don't control */
 .yRemoteSelectionHead::before {
     display: none; 
 }
 
+/* --- Premium Utilities --- */
 
-/* Utilities */
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Hide scrollbar utility */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }

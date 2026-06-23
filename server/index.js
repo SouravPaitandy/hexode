@@ -426,11 +426,10 @@ Provide concise, actionable responses. Include code snippets when helpful. Forma
   }
 });
 
-// --- Piston Execution API ---
+// --- Code Execution API (Judge0 CE) ---
 app.post("/execute", async (req, res) => {
   const { code, files, language, stdin } = req.body;
 
-  // LOGGING INPUT
   console.log("------------------------------------------------");
   console.log(`[EXECUTE] Language: ${language}`);
   console.log(`[EXECUTE] Stdin: "${stdin}"`);
@@ -438,46 +437,240 @@ app.post("/execute", async (req, res) => {
   console.log("------------------------------------------------");
 
   try {
-    const RUNTIMES = {
-      javascript: "18.15.0",
-      python: "3.10.0",
-      java: "15.0.2",
-      c: "10.2.0",
-      cpp: "10.2.0",
-    };
-    const version = RUNTIMES[language] || "18.15.0";
-    const PISTON_URL =
-      process.env.PISTON_URL || "https://emkc.org/api/v2/piston/execute";
-
-    // Prepare files for Piston (support multi-file or legacy single-code)
-    let pistonFiles = [];
-    if (files && Array.isArray(files) && files.length > 0) {
-      pistonFiles = files.map((f) => ({
-        name: f.name,
-        content: f.content,
-      }));
-    } else {
-      pistonFiles = [{ content: code }];
+    // -- Optional: Self-hosted Piston fallback (set PISTON_URL in .env) --
+    if (process.env.PISTON_URL) {
+      const RUNTIMES = {
+        javascript: "18.15.0",
+        python: "3.10.0",
+        java: "15.0.2",
+        c: "10.2.0",
+        cpp: "10.2.0",
+      };
+      const version = RUNTIMES[language] || "18.15.0";
+      let pistonFiles = [];
+      if (files && Array.isArray(files) && files.length > 0) {
+        pistonFiles = files.map((f) => ({ name: f.name, content: f.content }));
+      } else {
+        pistonFiles = [{ content: code }];
+      }
+      const pistonRes = await fetch(process.env.PISTON_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language: language || "javascript",
+          version,
+          files: pistonFiles,
+          stdin: stdin || "",
+        }),
+      });
+      const pistonData = await pistonRes.json();
+      console.log("[EXECUTE] Piston Result:", JSON.stringify(pistonData));
+      return res.json(pistonData);
     }
 
-    const response = await fetch(PISTON_URL, {
+    // -- Judge0 CE (public free endpoint, no key required for moderate use) --
+    // Full language list: https://ce.judge0.com/languages
+    const JUDGE0_LANG_IDS = {
+      javascript: 63, // Node.js 12.14.0
+      python:     71, // Python 3.8.1
+      java:       62, // Java OpenJDK 13.0.1
+      c:          50, // C (GCC 9.2.0)
+      cpp:        54, // C++ (GCC 9.2.0)
+    };
+
+    const languageId = JUDGE0_LANG_IDS[language] || JUDGE0_LANG_IDS.javascript;
+
+    // Judge0 only accepts a single source_code string.
+    // We must intelligently merge multi-file projects into one submission.
+
+    // Extension whitelist per language — only merge same-language files
+    const LANG_EXTENSIONS = {
+      javascript: [".js", ".cjs", ".mjs"],
+      python:     [".py"],
+      java:       [".java"],
+      c:          [".c", ".h"],
+      cpp:        [".cpp", ".cc", ".cxx", ".hpp", ".h"],
+    };
+    const allowedExts = LANG_EXTENSIONS[language] || [];
+
+    const allFiles = files && Array.isArray(files) && files.length > 0
+      ? files
+      : [{ name: "main", content: code || "" }];
+
+    // The entry point is always files[0] (client sends active file first)
+    const entryFile = allFiles[0];
+
+    // Only include files whose extension matches the active language
+    const otherFiles = allFiles
+      .slice(1)
+      .filter((f) => allowedExts.some((ext) => f.name.endsWith(ext)));
+
+    let sourceCode = "";
+
+    if (language === "java") {
+      // Java: Judge0 names the file "Main.java" internally, so the public class
+      // MUST be named "Main". We extract the actual public class name from the
+      // source and rename it to Main, then inline all other files as inner classes.
+      let entryContent = entryFile.content;
+
+      // Find the public class name in the entry file
+      const publicClassMatch = entryContent.match(/public\s+class\s+(\w+)/);
+      const publicClassName = publicClassMatch ? publicClassMatch[1] : null;
+
+      if (publicClassName && publicClassName !== "Main") {
+        // Rename all occurrences of the public class to Main so Judge0 is happy
+        entryContent = entryContent
+          .replace(
+            new RegExp(`public\\s+class\\s+${publicClassName}`, "g"),
+            "public class Main"
+          )
+          .replace(
+            new RegExp(`\\b${publicClassName}\\b`, "g"),
+            "Main"
+          );
+      }
+
+      // Inline other .java files: strip package decls, make package-private,
+      // and rename any class named "Main" to avoid collision with the entry point.
+      const otherClassCode = otherFiles
+        .map((f) => {
+          let content = f.content;
+
+          // Remove package declarations (not supported in single-file Judge0 submission)
+          content = content.replace(/^\s*package\s+[\w.]+\s*;/gm, "");
+
+          // Make all top-level public classes package-private
+          content = content.replace(/\bpublic\s+class\s+/g, "class ");
+
+          // Derive a safe class alias from the filename (e.g. "Dev.java" → "Dev")
+          let safeAlias = f.name
+            .replace(/\.java$/, "")
+            .replace(/[^a-zA-Z0-9_]/g, "_");
+
+          // Edge case: if the other file is literally "Main.java", suffix it
+          // so it never clashes with the entry point's class name
+          if (safeAlias === "Main") safeAlias = "Main_Helper";
+
+          // If this file declares a class called "Main" (now package-private),
+          // rename it to the safe alias so it doesn't clash with the entry Main.
+          if (/\bclass\s+Main\b/.test(content)) {
+            content = content.replace(/\bclass\s+Main\b/g, `class ${safeAlias}`);
+            // Also rename references to Main (usages) inside this file
+            content = content.replace(
+              new RegExp(`\\bMain\\b`, "g"),
+              safeAlias
+            );
+          }
+
+          return `\n// --- ${f.name} ---\n${content}`;
+        })
+        .join("\n");
+
+      sourceCode = entryContent + otherClassCode;
+
+
+    } else if (language === "javascript") {
+      // JavaScript: build a require() shim so require('./filename') calls resolve
+      // to the inlined content at runtime, without relying on a real filesystem.
+      const moduleRegistry = {};
+      otherFiles.forEach((f) => {
+        // Strip file extension for the key, support relative paths like './utils'
+        const key = f.name
+          .replace(/^\.\//, "")        // remove leading ./
+          .replace(/\.(js|cjs|mjs)$/, ""); // remove extension
+        moduleRegistry[key] = f.content;
+      });
+
+      const shimCode = Object.keys(moduleRegistry).length > 0
+        ? `
+// ── Hexode multi-file require() shim ────────────────────────────────────
+const __modules__ = {};
+const __moduleCode__ = ${JSON.stringify(moduleRegistry)};
+const __origRequire = require;
+function require(id) {
+  // Normalize: strip leading ./ and extension
+  const key = id.replace(/^\\.?\\//, '').replace(/\\.(js|cjs|mjs)$/, '');
+  if (__moduleCode__[key] !== undefined) {
+    if (!__modules__[key]) {
+      const module = { exports: {} };
+      const fn = new Function('module', 'exports', 'require', __moduleCode__[key]);
+      fn(module, module.exports, require);
+      __modules__[key] = module.exports;
+    }
+    return __modules__[key];
+  }
+  return __origRequire(id);
+}
+// ─────────────────────────────────────────────────────────────────────────
+`
+        : "";
+
+      sourceCode = shimCode + "\n" + entryFile.content;
+
+    } else {
+      // C, C++, Python: just concatenate all files.
+      // For C/C++, shared header content lands before the entry point.
+      // For Python, all helper functions/classes are available in scope.
+      const prefix = otherFiles
+        .map((f) => `// --- ${f.name} ---\n${f.content}`)
+        .join("\n\n");
+
+      sourceCode = prefix
+        ? prefix + "\n\n// --- " + entryFile.name + " ---\n" + entryFile.content
+        : entryFile.content;
+    }
+
+    // ?wait=true makes it synchronous — no separate polling step needed
+    const JUDGE0_URL =
+      process.env.JUDGE0_URL ||
+      "https://ce.judge0.com/submissions?base64_encoded=false&wait=true";
+
+    const judge0Res = await fetch(JUDGE0_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        language: language || "javascript",
-        version: version,
-        files: pistonFiles,
+        language_id: languageId,
+        source_code: sourceCode,
         stdin: stdin || "",
       }),
     });
-    const data = await response.json();
 
-    // LOGGING OUTPUT
-    console.log("[EXECUTE] Result:", JSON.stringify(data));
 
-    res.json(data);
+    if (!judge0Res.ok) {
+      const errText = await judge0Res.text();
+      console.error("[EXECUTE] Judge0 HTTP Error:", judge0Res.status, errText);
+      return res.status(502).json({
+        error: `Execution service returned ${judge0Res.status}. Try again shortly.`,
+      });
+    }
+
+    const j = await judge0Res.json();
+    console.log("[EXECUTE] Judge0 Result:", JSON.stringify(j));
+
+    // Normalize to Piston-compatible shape so the client needs zero changes:
+    // Piston shape: { run: { output, stdout, stderr, code, signal } }
+    const stdout     = j.stdout        || "";
+    const stderr     = j.stderr        || "";
+    const compileErr = j.compile_output || "";
+    const exitCode   = j.exit_code     ?? 0;
+
+    // Combine outputs so users see compile errors + runtime output together
+    const combinedOutput = [stdout, compileErr, stderr]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+
+    res.json({
+      run: {
+        output: combinedOutput,
+        stdout,
+        stderr: stderr || compileErr,
+        code:   exitCode,
+        signal: j.signal || null,
+      },
+    });
   } catch (error) {
-    console.error("Execution Code Error:", error);
+    console.error("[EXECUTE] Error:", error);
     res.status(500).json({ error: error.message });
   }
 });

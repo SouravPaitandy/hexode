@@ -1,4 +1,4 @@
-# Hexode - AI-Powered Cloud-Based Collaborative IDE 
+# Hexode - AI-Powered Cloud-Based Collaborative IDE
 
 <img src="client/public/logo.png" alt="Hexode" width="80"/>
 
@@ -15,7 +15,8 @@
 - **Multi-Language Support**: JavaScript, Python, Java, C, C++
 - **Real-Time Collaboration**: Live code editing with Yjs
 - **Cloud Persistence**: MongoDB-backed project storage
-- **Code Execution**: Instant code running via Piston API
+- **Instant Playground**: Ephemeral scratchpads via `/play` or `/playground`
+- **Code Execution**: Instant code running via Judge0 CE (Free Public API)
 - **File Management**: Create, edit, delete files and folders
 
 ### 🤖 HexodeAI
@@ -35,11 +36,12 @@
 ### 🎨 User Experience
 
 - **Interactive Product Tour**: 8-step onboarding for new users
-- **Keyboard Shortcuts**: Ctrl+S to save, Ctrl+Enter to run
+- **Distraction-Free Fullscreen**: Immersive coding environment via `F11`
+- **Keyboard Shortcuts**: Power-user navigation (Ctrl+S, Ctrl+Enter, Ctrl+M, etc.)
 - **Auto-Save**: Debounced auto-save every 2 seconds
 - **Loading States**: Skeleton loaders and spinners
 - **Toast Notifications**: User-friendly feedback
-- **Dark/Light Theme**: Toggle between themes
+- **Custom Themes**: Includes Neon Nights, Oceanic Abyss, Rose Pine Dawn, Arctic Frost
 
 ### 🔒 Security & Performance
 
@@ -76,7 +78,7 @@
 - **MongoDB** + **Mongoose**: Database
 - **Yjs** + **y-leveldb**: CRDT persistence
 - **WebSocket**: Real-time communication
-- **Piston API**: Code execution
+- **Judge0 CE**: Code execution (Replaced Piston API)
 
 ---
 
@@ -214,6 +216,11 @@ useEffect(() => {
 
 - **Ctrl+S** / **Cmd+S**: Manual save
 - **Ctrl+Enter** / **Cmd+Enter**: Run code
+- **Ctrl+B** / **Cmd+B**: Toggle file explorer sidebar
+- **Ctrl+M** / **Cmd+M**: Toggle HexodeAI Chat panel
+- **Ctrl+N** / **Cmd+N**: Initialize new workspace (Dashboard)
+- **Ctrl+K** / **Cmd+K**: Focus project search (Dashboard)
+- **F11**: Toggle Fullscreen Mode
 
 ---
 
@@ -243,19 +250,25 @@ Add Google Analytics 4 tracking:
 
 ### Themes
 
-Toggle between dark/light themes via the theme toggle button.
+Toggle between dark/light mode via the theme toggle button. 
+
+Four premium custom themes are included built-in:
+- **Neon Nights** (Cyberpunk aesthetic)
+- **Oceanic Abyss** (Deep sea blue)
+- **Rose Pine Dawn** (Warm light aesthetic)
+- **Arctic Frost** (Crisp icy light)
 
 ### Languages
 
 Supported: JavaScript, Python, Java, C, C++
 
-Add more in `IDE.jsx`:
+Language settings are mapped to Judge0 IDs in `server/index.js` under `/execute`:
 
 ```javascript
-const RUNTIMES = {
-  javascript: "18.15.0",
-  python: "3.10.0",
-  // Add more...
+const JUDGE0_LANG_IDS = {
+  javascript: 63,
+  python: 71,
+  // Add more by mapping from https://ce.judge0.com/languages
 };
 ```
 

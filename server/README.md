@@ -17,7 +17,7 @@ Server runs on: `http://localhost:3001`
 - **MongoDB** + **Mongoose** - Database
 - **Yjs** + **y-leveldb** - CRDT persistence
 - **WebSocket** - Real-time communication
-- **Piston API** - Code execution
+- **Judge0 API** - Code execution
 - **express-rate-limit** - DDoS protection
 
 ## 🔧 Environment Variables
@@ -59,7 +59,7 @@ server/
 
 ### Code Execution
 
-- `POST /execute` - Execute code via Piston
+- `POST /execute` - Execute code via Judge0
 
 ### WebSocket
 
@@ -144,10 +144,10 @@ All endpoints validate:
 - C (GCC 10.2.0)
 - C++ (G++ 10.2.0)
 
-### Piston API
+### Judge0 API
 
 ```javascript
-POST https://emkc.org/api/v2/piston/execute
+POST https://ce.judge0.com/submissions?base64_encoded=false&wait=true
 {
   "language": "javascript",
   "version": "18.15.0",

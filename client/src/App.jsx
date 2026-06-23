@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { initGA } from "./utils/analytics";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -8,6 +8,7 @@ import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 import Docs from "./pages/Docs";
+import Sponsor from "./pages/Sponsor";
 import { ModalProvider } from "./context/ModalContext";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -34,9 +35,14 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/docs" element={<Docs />} />
+            <Route path="/sponsor" element={<Sponsor />} />
             <Route path="/editor/:roomId" element={<IDE />} />
             {/* Fallback for direct link without ID */}
             <Route path="/editor" element={<IDE />} />
+
+            {/* Friendly playground aliases — both redirect to /editor/test */}
+            <Route path="/play" element={<Navigate to="/editor/test" replace />} />
+            <Route path="/playground" element={<Navigate to="/editor/test" replace />} />
 
             {/* Universal 404 - Must be last */}
             <Route path="*" element={<NotFound />} />

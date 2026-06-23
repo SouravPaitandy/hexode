@@ -36,7 +36,11 @@ const NotFound = () => {
 
   return (
     <div className="h-screen w-screen bg-background flex flex-col items-center justify-center p-4 overflow-hidden relative selection:bg-blue-500/30">
-      <SEO title="NOT FOUND!" description="" />
+      <SEO
+        title="Page Not Found"
+        description="The page you're looking for doesn't exist. Head back to Hexode and start coding in the cloud."
+        noindex
+      />
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
         <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
@@ -57,7 +61,7 @@ const NotFound = () => {
           <motion.h1
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-linear-to-b from-white to-white/50 tracking-tighter"
+            className="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-linear-to-b from-zinc-800 to-zinc-500 dark:from-white dark:to-white/50 tracking-tighter"
           >
             404!
           </motion.h1>
@@ -84,7 +88,7 @@ const NotFound = () => {
           </div>
 
           {/* Terminal Content */}
-          <div className="p-4 font-mono text-sm md:text-base bg-black/50 min-h-[200px] flex flex-col gap-1">
+          <div className="p-4 font-mono text-sm md:text-base bg-zinc-900 dark:bg-black/50 min-h-[200px] flex flex-col gap-1">
             {terminalText.map((line, i) => (
               <motion.div
                 key={i}
@@ -126,7 +130,7 @@ const NotFound = () => {
 
           <Link
             to="/"
-            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-foreground text-background hover:bg-zinc-200 transition-all font-bold shadow-lg shadow-white/5"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-foreground text-background hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all font-bold shadow-lg shadow-black/10 dark:shadow-white/5"
           >
             <Home size={18} />
             Return Home
@@ -134,7 +138,7 @@ const NotFound = () => {
 
           <Link
             to="/editor/test"
-            className="flex items-center gap-2 px-6 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all font-medium"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-all font-medium"
           >
             <Code2 size={18} />
             Open Playground
@@ -142,8 +146,8 @@ const NotFound = () => {
         </motion.div>
       </motion.div>
 
-      <div className="absolute bottom-6 text-zinc-600 text-xs font-mono">
-        HEXODE_SYSTEM_V2.0
+      <div className="absolute bottom-6 text-zinc-400 dark:text-zinc-600 text-xs font-mono">
+        HEXODE_SYSTEM_V3.0
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 import Editor from "@monaco-editor/react";
@@ -12,11 +13,14 @@ import ProductTour from "../components/ProductTour";
 import { useToast } from "../components/Toast";
 import IDEHeader from "../components/ide/IDEHeader";
 import TerminalPanel from "../components/ide/TerminalPanel";
+import StdinModal from "../components/ide/StdinModal";
 import StatusBar from "../components/ide/StatusBar";
 import NotFound from "./NotFound";
 import { useTheme } from "../context/ThemeContext";
 import { useModal } from "../context/ModalContext";
 import SEO from "../components/SEO";
+import WelcomeScreen from "../components/ide/WelcomeScreen";
+import monacoThemes, { THEME_METADATA } from "../utils/monacoThemes";
 
 const IDE = () => {
   const { theme } = useTheme();
@@ -25,7 +29,7 @@ const IDE = () => {
   const { confirm } = useModal();
   const isPlayground = roomId === "test";
   const testSessionId = useRef(
-    "playground-" + Math.random().toString(36).substr(2, 9)
+    "playground-" + Math.random().toString(36).substr(2, 9),
   ).current;
 
   const [searchParams] = useSearchParams();
@@ -35,6 +39,7 @@ const IDE = () => {
 
   const [roomOwnerId, setRoomOwnerId] = useState(null);
   const [isGuestEditAllowed, setIsGuestEditAllowed] = useState(false);
+  const [projectName, setProjectName] = useState("Demo-Room");
 
   // Security: Enforce View Mode if current user is NOT the owner
   const isOwner = useMemo(() => {
@@ -55,15 +60,29 @@ const IDE = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("terminal");
-  const [stdin, setStdin] = useState(null);
+  const [stdin, setStdin] = useState("");
+  const [isStdinOpen, setIsStdinOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isHydrating, setIsHydrating] = useState(true);
+
+  // Editor Theme — persisted to localStorage, independent of the OS light/dark setting
+  const [editorTheme, setEditorTheme] = useState(
+    () =>
+      localStorage.getItem("hexode-editor-theme") ||
+      (theme === "dark" ? "midnight-aurora" : "morning-aurora"),
+  );
+
+  const handleThemeChange = (themeId) => {
+    setEditorTheme(themeId);
+    localStorage.setItem("hexode-editor-theme", themeId);
+  };
 
   // Smart Autosave (Debounced)
   const saveTimeoutRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const [isNotFound, setIsNotFound] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   // Allow MongoDB ObjectIDs OR "proj-XXXX" format
   const isValidProjectId = (id) => /^(proj-\d+|[0-9a-fA-F]{24})$/.test(id);
 
@@ -127,10 +146,7 @@ const IDE = () => {
       setIsMobile(mobile);
 
       // Don't auto-close on mobile - let user control sidebar manually
-      // Only auto-show when switching to desktop
-      if (!mobile && !showSidebar) {
-        setShowSidebar(true);
-      }
+      // We removed the auto-show for desktop so the collapsed state is respected
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -187,7 +203,7 @@ const IDE = () => {
   }, [isSignedIn, isViewMode, roomId, user, isRunning]);
 
   // File System State
-  const [fileName, setFileName] = useState("script.js");
+  const [fileName, setFileName] = useState(null);
   const [files, setFiles] = useState([]);
 
   // User State
@@ -329,12 +345,17 @@ const IDE = () => {
             import.meta.env.VITE_API_URL || "http://localhost:3001";
           try {
             const res = await axios.get(
-              `${API_URL}/api/rooms/${roomId || "monaco-demo"}`
+              `${API_URL}/api/rooms/${roomId || "monaco-demo"}`,
             );
 
             if (res.data?.ownerId) {
               setRoomOwnerId(res.data.ownerId);
             }
+
+            if (res.data?.name) {
+              setProjectName(res.data.name);
+            }
+
             if (res.data?.isGuestEditAllowed) {
               setIsGuestEditAllowed(res.data.isGuestEditAllowed);
             }
@@ -346,10 +367,27 @@ const IDE = () => {
           } catch (e) {
             // Note: We do NOT 404 here anymore.
             // If API fails, it might be a local-only project (guest mode).
+            // For guests, the lang is only stored in localStorage — read it back here.
+            try {
+              const localProjects = JSON.parse(
+                localStorage.getItem("devdock-projects") || "[]",
+              );
+              const localProject = localProjects.find(
+                (p) => (p.roomId || p.id) === roomId,
+              );
+              if (localProject?.lang) {
+                projectLang = localProject.lang;
+              }
+              if (localProject?.name) {
+                setProjectName(localProject.name);
+              }
+            } catch (_) {
+              /* ignore */
+            }
             // We proceed to Yjs sync/fallback.
             console.warn(
               "DB Fetch failed or skipped (proceeding to local/Yjs)",
-              e
+              e,
             );
           }
         }
@@ -376,11 +414,14 @@ const IDE = () => {
                   .getText("playground.js")
                   .insert(
                     0,
-                    "// Hexode Playground\n// Write code here. Changes are NOT saved.\n// Press 'Run' to execute.\n\nconsole.log('Hello from the Playground!');\n"
+                    "// Hexode Playground\n// Write code here. Changes are NOT saved.\n// Press 'Run' to execute.\n\nconsole.log('Hello from the Playground!');\n",
                   );
                 setFileName("playground.js");
               }
-            } else if (room === "monaco-demo" || !dbFiles) {
+            } else if (
+              room === "monaco-demo" ||
+              Object.keys(dbFiles || {}).length === 0
+            ) {
               let filename = "index.js";
               let content =
                 "// Welcome to Hexode!\nconsole.log('Hello World');";
@@ -417,7 +458,7 @@ const IDE = () => {
                   .getText("src/utils.js")
                   .insert(
                     0,
-                    "const add = (a, b) => a + b;\nmodule.exports = { add };"
+                    "const add = (a, b) => a + b;\nmodule.exports = { add };",
                   );
               }
             }
@@ -446,13 +487,6 @@ const IDE = () => {
       }
     });
 
-    // Also init if it takes too long?
-    // No, if no sync, then we are offline. We should probably show offline state.
-    // If we init locally while offline, and then sync, Yjs handles it.
-    // But duplicate content comes from us inserting "Hello World" into an empty doc
-    // that actually has "Hello World" on the server but we haven't received it yet.
-    // So Waiting for 'synced' is critical.
-
     const yFilesMap = ydoc.getMap("project-files");
     yFilesMap.observe(() => {
       setFiles(Array.from(yFilesMap.keys()));
@@ -472,7 +506,18 @@ const IDE = () => {
 
   // 2. Bind Editor to CURRENT File
   useEffect(() => {
-    if (!editorRef || !window.currentYDoc || !window.currentProvider) return;
+    // Guard: skip if no file is selected (WelcomeScreen is showing) or editor not mounted
+    if (
+      !editorRef ||
+      !fileName ||
+      !window.currentYDoc ||
+      !window.currentProvider
+    )
+      return;
+
+    const model = editorRef.getModel();
+    // Guard: model can be null if the editor was just unmounted (stale ref)
+    if (!model) return;
 
     const ydoc = window.currentYDoc;
     const provider = window.currentProvider;
@@ -480,9 +525,9 @@ const IDE = () => {
     const ytext = ydoc.getText(fileName);
     const binding = new MonacoBinding(
       ytext,
-      editorRef.getModel(),
+      model,
       new Set([editorRef]),
-      provider.awareness
+      provider.awareness,
     );
 
     return () => {
@@ -529,8 +574,10 @@ const IDE = () => {
       }
 
       if (map.has(name)) {
-        // File already exists! Switch to it but don't overwrite.
-        setFileName(name);
+        // File already exists — switch to it only if it's a real file, not a .keep placeholder
+        if (!name.endsWith("/.keep") && name !== ".keep") {
+          setFileName(name);
+        }
         return;
       }
 
@@ -550,7 +597,11 @@ const IDE = () => {
           text.insert(0, content);
         }
       }
-      setFileName(name);
+
+      // .keep files are internal folder placeholders — never open them in the editor
+      if (!name.endsWith("/.keep") && name !== ".keep") {
+        setFileName(name);
+      }
     }
   };
 
@@ -559,23 +610,44 @@ const IDE = () => {
     if (window.currentYDoc) {
       const map = window.currentYDoc.getMap("project-files");
 
-      // Prevent deleting the last file (Pre-check)
-      if (Array.from(map.keys()).length <= 1) {
-        addToast("Cannot delete the last file.", "error", 3000);
-        return;
-      }
+      // Detect if `name` is a folder: folders have no direct Yjs entry,
+      // but have keys like "name/.keep" or "name/somefile.js".
+      const allKeys = Array.from(map.keys());
+      const isFolderPath = !map.has(name);
+      const keysToDelete = isFolderPath
+        ? allKeys.filter((k) => k === name || k.startsWith(name + "/"))
+        : [name];
+
+      if (keysToDelete.length === 0) return;
+
+      const isFolder = isFolderPath && keysToDelete.length > 0;
+      const displayName = isFolder
+        ? `folder '${name}' and all its contents`
+        : `'${name}'`;
 
       confirm({
-        title: "Delete File?",
-        message: `Are you sure you want to permanently delete '${name}'?`,
+        title: isFolder ? "Delete Folder?" : "Delete File?",
+        message: `Are you sure you want to permanently delete ${displayName}?`,
         confirmText: "Delete",
         type: "danger",
         onConfirm: () => {
-          map.delete(name);
-          if (fileName === name) {
-            const keys = Array.from(map.keys());
-            if (keys.length > 0) setFileName(keys[0]);
-            else setFileName("script.js");
+          keysToDelete.forEach((key) => map.delete(key));
+
+          // Determine remaining real files (exclude .keep placeholders)
+          const remaining = Array.from(map.keys()).filter(
+            (k) => !k.endsWith("/.keep") && k !== ".keep",
+          );
+
+          if (remaining.length > 0) {
+            // Switch to another real file if the active one was deleted
+            if (keysToDelete.includes(fileName)) {
+              setFileName(remaining[0]);
+            }
+          } else {
+            // No real files left — show the empty/welcome state regardless of playground or project.
+            // In playground: the PlaygroundEmptyScreen lets the user pick a template.
+            // In project:    the WelcomeScreen guides them to create a file via the sidebar.
+            setFileName(null);
           }
         },
       });
@@ -595,13 +667,14 @@ const IDE = () => {
   };
 
   const getLanguage = (filename) => {
+    if (!fileName) return;
     if (filename.endsWith(".js")) return "javascript";
     if (filename.endsWith(".cjs")) return "javascript";
     if (filename.endsWith(".mjs")) return "javascript";
     if (filename.endsWith(".py")) return "python";
-    if (filename.endsWith(".java")) return "java";
+    if (filename.endsWith(".java") || filename.endsWith(".kt")) return "java";
     if (filename.endsWith(".c")) return "c";
-    if (filename.endsWith(".cpp")) return "cpp";
+    if (filename.endsWith(".cpp") || filename.endsWith(".hpp")) return "cpp";
     return "javascript";
   };
 
@@ -672,6 +745,10 @@ const IDE = () => {
   };
 
   const toggleGuestAccess = async () => {
+    if (isPlayground) {
+      addToast("Sorry! Playground can not be shared", "error", 3000);
+      return;
+    }
     const newValue = !isGuestEditAllowed;
     setIsGuestEditAllowed(newValue);
     try {
@@ -690,7 +767,10 @@ const IDE = () => {
   };
 
   const runCode = async (customStdin = null) => {
-    if (!editorRef) return;
+    if (!editorRef || !fileName) {
+      addToast("Please select a file to run.", "error", 2000);
+      return;
+    }
     setIsRunning(true);
     setActiveTab("terminal");
 
@@ -706,7 +786,7 @@ const IDE = () => {
     // Log for debugging
     if (process.env.NODE_ENV === "development") {
       console.log(
-        `[EXEC] Sending Request: Language=${lang}, Stdin=${stdinToUse}`
+        `[EXEC] Sending Request: Language=${lang}, Stdin=${stdinToUse}`,
       );
     }
 
@@ -745,16 +825,38 @@ const IDE = () => {
         }),
       });
 
-      const data = await response.json();
-
       // Remove loading toast
       removeToast(toastId);
+
+      // Handle Rate Limits gracefully (15/min)
+      if (response.status === 429) {
+        setTerminalHistory((prev) => [
+          ...prev,
+          {
+            type: "error",
+            content: "[HEXODE] Execution limit reached (15/min).",
+          },
+          {
+            type: "error",
+            content:
+              "We limit executions to keep the open-source servers stable.",
+          },
+          {
+            type: "system",
+            content:
+              "Please wait a minute, or sponsor the project to help us scale!",
+          },
+        ]);
+        return;
+      }
+
+      const data = await response.json();
 
       if (data.run) {
         const lines = data.run.output?.split("\n") || [];
         setTerminalHistory((prev) => [
           ...prev,
-          { type: "system", content: "> Executing code..." },
+          { type: "system", content: `> Executing code of ${fileName}...` },
         ]);
         lines.forEach((line) => {
           setTerminalHistory((prev) => [
@@ -785,43 +887,24 @@ const IDE = () => {
     }
   };
 
-  /* Terminal State Machine */
-  const [terminalMode, setTerminalMode] = useState("COMMAND"); // COMMAND | AWAITING_STDIN
-
-  // Handle "Run" button click from Header
+  // Handle "Run" button click from Header — open the stdin modal first
   const handleRunClick = () => {
-    // Check if we should skip stdin? For now, let's keep consistency and ask for Stdin.
-    // If user wants to skip, they can just press Enter.
-    setTerminalMode("AWAITING_STDIN");
-    setActiveTab("terminal"); // Ensure terminal is visible
-    setTerminalHistory((prev) => [
-      ...prev,
-      {
-        type: "system",
-        content: "Enter standard input (press Enter to skip):",
-      },
-    ]);
+    if (!fileName) {
+      addToast("Please select a file to run.", "error", 2000);
+      return;
+    }
+    setIsStdinOpen(true);
+    setActiveTab("terminal");
+  };
+
+  // Called by StdinModal when user clicks "Run Code"
+  const handleStdinSubmit = (stdinValue) => {
+    setStdin(stdinValue);
+    setIsStdinOpen(false);
+    runCode(stdinValue);
   };
 
   const handleTerminalCommand = (cmd) => {
-    // Handling Stdin Input Mode
-    if (terminalMode === "AWAITING_STDIN") {
-      setTerminalHistory((prev) => [
-        ...prev,
-        { type: "command", content: cmd }, // Echo the input
-        { type: "system", content: "Input captured. Running..." },
-      ]);
-      setStdin(cmd);
-      setTerminalMode("COMMAND");
-
-      // Trigger run immediately with the captured stdin
-      // We need to set stdin state, but runCode reads 'stdin' state which might not be updated yet due to closure/react batching.
-      // So we pass it directly or use a ref.
-      // Better: Pass stdin argument to runCode.
-      runCode(cmd);
-      return;
-    }
-
     const trimmed = cmd.trim();
     if (!trimmed) return;
 
@@ -888,19 +971,12 @@ const IDE = () => {
         }
         break;
       case "run":
-        // Check for args to skip stdin?
+        // Check for args to skip stdin
         if (args.length > 0 && args[0] === "--force") {
           runCode("");
         } else {
-          // Enter Interactive Stdin Mode
-          setTerminalMode("AWAITING_STDIN");
-          setTerminalHistory((prev) => [
-            ...prev,
-            {
-              type: "system",
-              content: "Enter standard input (press Enter to skip):",
-            },
-          ]);
+          // Open the new Stdin Modal interface
+          handleRunClick();
         }
         break;
 
@@ -917,15 +993,88 @@ const IDE = () => {
     }
   };
 
+  // ── Global Keyboard Shortcuts & Fullscreen ──
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Fullscreen (F11)
+      if (e.key === "F11") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+
+      // Ctrl/Cmd + S : Save (Prevent browser default, Yjs handles real-time save anyway)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        addToast("File saved locally and synced!", "success");
+      }
+
+      // Ctrl/Cmd + Enter : Run Code
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (fileName && !isRunning) {
+          handleRunClick();
+        }
+      }
+
+      // Ctrl/Cmd + B : Toggle Sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setShowSidebar((prev) => !prev);
+      }
+
+      // Ctrl/Cmd + M : Toggle Chat
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        if (!isPlayground) {
+          e.preventDefault();
+          setIsChatOpen((prev) => !prev);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true); // use capture phase
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [fileName, isRunning, showSidebar, isChatOpen, isPlayground, addToast]);
+
   if (isNotFound) {
     return <NotFound />;
+  }
+
+  function handleBeforeMount(monaco) {
+    // Register all custom themes — skip built-ins (vs, vs-dark, hc-black) as Monaco provides them natively
+    THEME_METADATA.forEach(({ id, builtin }) => {
+      if (builtin) return; // Monaco already knows these
+      const camelKey = id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      if (monacoThemes[camelKey]) {
+        monaco.editor.defineTheme(id, monacoThemes[camelKey]);
+      }
+    });
   }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden font-sans">
       <SEO
         title={
-          isPlayground ? "Hexode Playground - Online IDE & Compiler" : "Editor"
+          isPlayground
+            ? "Hexode Playground - Online IDE & Compiler"
+            : `${projectName} - Hexode Editor`
         }
         description={
           isPlayground
@@ -937,6 +1086,10 @@ const IDE = () => {
             ? "online compiler, online ide, java compiler, python online, c++ compiler, dsa practice, interview sandbox"
             : "cloud ide, collaborative editor, pair programming"
         }
+        // Project rooms are user-specific sessions — don't waste crawl budget on them.
+        // Playground is a public demo page, so it stays indexable.
+        noindex={!isPlayground}
+        schemaType="WebApplication"
       />
       {/* Auth Loading State - Critical for preventing Guest Fallback on Refresh */}
       {!isLoaded ? (
@@ -949,13 +1102,15 @@ const IDE = () => {
       ) : (
         <>
           <IDEHeader
-            roomId={roomId}
+            roomId={isPlayground ? "playground" : roomId}
+            projectName={isPlayground ? "Playground" : projectName}
             user={user}
             fileName={fileName}
             isChatOpen={isChatOpen}
             setIsChatOpen={setIsChatOpen}
             runCode={handleRunClick}
             isRunning={isRunning}
+            showSidebar={showSidebar}
             onToggleSidebar={() => setShowSidebar(!showSidebar)}
             isViewMode={isViewMode}
             isSaving={isSaving}
@@ -963,8 +1118,14 @@ const IDE = () => {
             isConnected={isConnected}
             isOwner={isOwner}
             isGuestEditAllowed={isGuestEditAllowed}
-            onToggleGuestAccess={toggleGuestAccess}
+            onToggleGuestAccess={() =>
+              setIsGuestEditAllowed(!isGuestEditAllowed)
+            }
+            editorTheme={editorTheme}
+            onThemeChange={setEditorTheme}
             isPlayground={isPlayground}
+            isFullscreen={isFullscreen}
+            toggleFullscreen={toggleFullscreen}
           />
 
           {/* Main Workspace */}
@@ -979,30 +1140,40 @@ const IDE = () => {
           {/* Main Content */}
           <div className="flex-1 flex overflow-hidden relative">
             {/* Sidebar Container (Desktop: Resizable, Mobile: Drawer) */}
-            {(!isMobile || showSidebar) && (
-              <div
-                style={{ width: isMobile ? "80%" : layout.sidebarW }}
-                className={`flex flex-col shrink-0 ${
-                  isMobile
-                    ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-surface"
-                    : ""
-                }`}
-              >
-                <Sidebar
-                  files={files}
-                  activeFile={fileName}
-                  onSelect={(f) => {
-                    setFileName(f);
-                    if (isMobile) setShowSidebar(false);
-                  }}
-                  onCreate={handleCreateFile}
-                  onDelete={handleDeleteFile}
-                  onRename={handleRenameFile}
-                  isViewMode={isViewMode}
-                  isPlayground={isPlayground}
-                />
-              </div>
-            )}
+            <AnimatePresence>
+              {showSidebar && (
+                <motion.div
+                  initial={isMobile ? { x: "-100%" } : { width: 0, opacity: 0 }}
+                  animate={
+                    isMobile ? { x: 0 } : { width: layout.sidebarW, opacity: 1 }
+                  }
+                  exit={isMobile ? { x: "-100%" } : { width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  style={{ width: isMobile ? "80%" : undefined }}
+                  className={`flex flex-col shrink-0 overflow-hidden ${
+                    isMobile
+                      ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-surface"
+                      : ""
+                  }`}
+                >
+                  <Sidebar
+                    files={files}
+                    activeFile={fileName}
+                    onSelect={(f) => {
+                      // .keep files are internal folder placeholders — never open in editor
+                      if (f.endsWith("/.keep") || f === ".keep") return;
+                      setFileName(f);
+                      if (isMobile) setShowSidebar(false);
+                    }}
+                    onCreate={handleCreateFile}
+                    onDelete={handleDeleteFile}
+                    onRename={handleRenameFile}
+                    isViewMode={isViewMode}
+                    isPlayground={isPlayground}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Mobile Sidebar Backdrop */}
             {isMobile && showSidebar && (
@@ -1013,7 +1184,7 @@ const IDE = () => {
             )}
 
             {/* Resizer: Sidebar <-> Editor (Desktop Only) */}
-            {!isMobile && (
+            {!isMobile && showSidebar && (
               <div
                 onMouseDown={startResizing("sidebar")}
                 className="w-1 bg-surface hover:bg-blue-500 cursor-col-resize border-x border-border transition-colors z-10"
@@ -1024,24 +1195,33 @@ const IDE = () => {
             <div className="flex-1 min-w-0 flex flex-col bg-card">
               {/* Editor Area */}
               <div className="flex-1 min-h-0">
-                <Editor
-                  height="100%"
-                  defaultLanguage={getLanguage(fileName)}
-                  language={getLanguage(fileName)}
-                  path={fileName}
-                  defaultValue="// Loading..."
-                  theme={theme === "dark" ? "vs-dark" : "light"}
-                  onMount={handleEditorDidMount}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    wordWrap: "on",
-                    padding: { top: 16 },
-                    fontFamily: "JetBrains Mono, monospace",
-                    scrollbar: { vertical: "hidden" },
-                    readOnly: isViewMode, // View Mode
-                  }}
-                />
+                {fileName ? (
+                  <Editor
+                    height="100%"
+                    defaultLanguage={getLanguage(fileName)}
+                    language={getLanguage(fileName)}
+                    path={fileName}
+                    defaultValue="// Loading..."
+                    theme={editorTheme}
+                    beforeMount={handleBeforeMount}
+                    onMount={handleEditorDidMount}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      wordWrap: "on",
+                      padding: { top: 16 },
+                      fontFamily: "JetBrains Mono, monospace",
+                      scrollbar: { vertical: "hidden" },
+                      readOnly: isViewMode, // View Mode
+                    }}
+                  />
+                ) : (
+                  <WelcomeScreen
+                    projectName={projectName}
+                    isPlayground={isPlayground}
+                    onCreateFile={handleCreateFile}
+                  />
+                )}
               </div>
 
               {/* Resizer: Editor <-> Terminal */}
@@ -1051,71 +1231,104 @@ const IDE = () => {
               />
 
               {/* Terminal Area */}
-              <TerminalPanel
-                height={layout.terminalH}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                history={terminalHistory} // Changed prop
-                onCommand={handleTerminalCommand} // New prop
-                stdin={stdin}
-                setStdin={setStdin}
-                user={currentUser}
-                roomId={roomId}
-                terminalMode={terminalMode}
-                isPlayground={isPlayground}
-              />
+              {fileName ? (
+                <TerminalPanel
+                  height={layout.terminalH}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  history={terminalHistory}
+                  onCommand={handleTerminalCommand}
+                  stdin={stdin}
+                  setStdin={setStdin}
+                  user={currentUser}
+                  roomId={roomId}
+                  isPlayground={isPlayground}
+                />
+              ) : null}
             </div>
 
-            {/* Chat Resizer (only if open) */}
-            {isChatOpen && (
-              <div
-                onMouseDown={startResizing("chat")}
-                className="w-1 bg-surface hover:bg-blue-500 cursor-col-resize border-l border-border transition-colors z-10"
-              />
-            )}
+            <AnimatePresence>
+              {isChatOpen && !isPlayground && (
+                <>
+                  {/* Chat Resizer (only if open and desktop) */}
+                  {!isMobile && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onMouseDown={startResizing("chat")}
+                      className="w-1 bg-surface hover:bg-blue-500 cursor-col-resize border-l border-border transition-colors z-10"
+                    />
+                  )}
 
-            {/* Chat Panel */}
-            {/* Chat Panel (Desktop: Resizable, Mobile: Drawer) */}
-            {isChatOpen && !isPlayground && (
-              <>
-                <div
-                  style={{ width: isMobile ? "85%" : layout.chatW }}
-                  className={`shrink-0 ${
-                    isMobile
-                      ? "fixed inset-y-0 right-0 z-50 shadow-2xl bg-surface border-l border-border"
-                      : ""
-                  }`}
-                >
-                  <Chat
-                    ydoc={window.currentYDoc}
-                    provider={window.currentProvider}
-                    username={currentUser.name}
-                    color={currentUser.color}
-                    onClose={() => setIsChatOpen(false)}
-                    roomId={roomId}
-                    fileName={fileName}
-                    onInsertCode={handleInsertCode}
-                  />
-                </div>
-                {/* Mobile Chat Backdrop */}
-                {isMobile && (
-                  <div
-                    className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-                    onClick={() => setIsChatOpen(false)}
-                  />
-                )}
-              </>
-            )}
+                  {/* Chat Panel (Desktop: Resizable, Mobile: Drawer) */}
+                  <motion.div
+                    initial={{ width: 0, x: isMobile ? "100%" : 0, opacity: 0 }}
+                    animate={{
+                      width: isMobile ? "85%" : layout.chatW,
+                      x: 0,
+                      opacity: 1,
+                    }}
+                    exit={{ width: 0, x: isMobile ? "100%" : 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className={`shrink-0 overflow-hidden bg-surface ${
+                      isMobile
+                        ? "fixed inset-y-0 right-0 z-50 shadow-2xl border-l border-border"
+                        : ""
+                    }`}
+                  >
+                    {/* Fixed width inner container to prevent content squish during animation */}
+                    <div
+                      style={{
+                        width: isMobile ? "100%" : layout.chatW,
+                        height: "100%",
+                        minWidth: "300px",
+                      }}
+                    >
+                      <Chat
+                        ydoc={window.currentYDoc}
+                        provider={window.currentProvider}
+                        username={currentUser.name}
+                        color={currentUser.color}
+                        onClose={() => setIsChatOpen(false)}
+                        roomId={roomId}
+                        fileName={fileName}
+                        onInsertCode={handleInsertCode}
+                      />
+                    </div>
+                  </motion.div>
+                  {/* Mobile Chat Backdrop */}
+                  {isMobile && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 bg-black/50 z-40"
+                      onClick={() => setIsChatOpen(false)}
+                    />
+                  )}
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Status Bar */}
           <StatusBar
             fileCount={files.length}
             username={currentUser.name}
-            fileName={fileName}
+            fileName={fileName ? fileName : ""}
+            isConnected={isConnected}
           />
         </>
       )}
+
+      {/* Stdin Modal: pre-execution multi-line input */}
+      <StdinModal
+        isOpen={isStdinOpen}
+        onClose={() => setIsStdinOpen(false)}
+        onRun={handleStdinSubmit}
+        language={getLanguage(fileName) || ""}
+      />
 
       {/* Product Tour for first-time users */}
       <ProductTour className="hidden md:block" />

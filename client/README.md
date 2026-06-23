@@ -56,14 +56,24 @@ src/
 
 ## ✨ Key Features
 
-### Product Tour
+### Product Tour & Landing Page
 
-8-step interactive onboarding for new users with spotlight highlighting.
+- 8-step interactive onboarding for new users with spotlight highlighting.
+- Fully interactive polyglot landing page mockup with dynamic code execution and HexodeAI demonstration.
+
+### Distraction-Free Fullscreen
+
+Toggle native fullscreen mode via the IDE header or `F11` for an immersive coding environment.
 
 ### Keyboard Shortcuts
 
 - **Ctrl+S** / **Cmd+S**: Save project
 - **Ctrl+Enter** / **Cmd+Enter**: Run code
+- **Ctrl+B** / **Cmd+B**: Toggle file explorer sidebar
+- **Ctrl+M** / **Cmd+M**: Toggle HexodeAI Chat panel
+- **Ctrl+N** / **Cmd+N**: Initialize new workspace (Dashboard)
+- **Ctrl+K** / **Cmd+K**: Focus project search (Dashboard)
+- **F11**: Toggle Fullscreen Mode
 
 ### Auto-Save
 
@@ -77,7 +87,13 @@ Live code editing powered by Yjs CRDT.
 
 ### Theme
 
-Toggle dark/light theme via theme button in header.
+Toggle dark/light theme via theme button in header. 
+
+Includes 4 custom premium themes out-of-the-box:
+- **Neon Nights** (Cyberpunk aesthetic)
+- **Oceanic Abyss** (Deep sea blue)
+- **Rose Pine Dawn** (Warm light aesthetic)
+- **Arctic Frost** (Crisp icy light)
 
 ### Monaco Editor
 

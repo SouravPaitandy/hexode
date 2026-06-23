@@ -15,7 +15,9 @@ import {
   X,
   Search,
   CheckCircle,
+  ArrowLeft,
 } from "lucide-react";
+import ThemeToggle from "../components/ThemeToggle";
 import SEO from "../components/SEO";
 
 const Docs = () => {
@@ -49,29 +51,50 @@ const Docs = () => {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="p-6 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-              <h3 className="text-blue-500 font-bold mb-2 flex items-center gap-2">
-                <Zap size={18} /> Quick Start
-              </h3>
-              <p className="text-sm text-muted mb-4">
-                No account required to try it out. Spin up an ephemeral sandbox
-                instantly.
-              </p>
-              <Link
-                to="/editor/test"
-                className="inline-flex items-center text-xs font-bold text-blue-500 hover:underline"
-              >
-                Launch Playground <ChevronRight size={12} />
-              </Link>
-            </div>
-            <div className="p-6 bg-purple-500/5 border border-purple-500/20 rounded-xl">
-              <h3 className="text-purple-500 font-bold mb-2 flex items-center gap-2">
-                <Cpu size={18} /> AI Powered
-              </h3>
-              <p className="text-sm text-muted">
-                Integrated with Google Gemini to debug, refactor, and explain
-                code in real-time.
-              </p>
+            {/* Quick Start Card - Made fully clickable */}
+            <Link
+              to="/editor/test"
+              className="group relative overflow-hidden p-6 glass-panel rounded-2xl hover:border-blue-500/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all duration-300 block"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/30 transition-all duration-500"></div>
+              <div className="relative z-10">
+                <h3 className="text-blue-500 dark:text-blue-400 font-bold mb-3 flex items-center gap-2 text-lg">
+                  <Zap
+                    size={20}
+                    className="group-hover:scale-110 transition-transform text-blue-500"
+                  />{" "}
+                  Quick Start
+                </h3>
+                <p className="text-sm text-muted mb-4 leading-relaxed">
+                  No account required to try it out. Spin up an ephemeral
+                  sandbox instantly.
+                </p>
+                <div className="inline-flex items-center text-xs font-bold text-blue-500 group-hover:text-blue-400 transition-colors">
+                  Launch Playground{" "}
+                  <ChevronRight
+                    size={14}
+                    className="ml-1 group-hover:translate-x-1 transition-transform"
+                  />
+                </div>
+              </div>
+            </Link>
+
+            {/* AI Powered Card */}
+            <div className="group relative overflow-hidden p-6 glass-panel rounded-2xl hover:border-purple-500/50 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] transition-all duration-300">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/30 transition-all duration-500"></div>
+              <div className="relative z-10">
+                <h3 className="text-purple-500 dark:text-purple-400 font-bold mb-3 flex items-center gap-2 text-lg">
+                  <Cpu
+                    size={20}
+                    className="group-hover:scale-110 transition-transform text-purple-500"
+                  />{" "}
+                  AI Powered
+                </h3>
+                <p className="text-sm text-muted leading-relaxed">
+                  Integrated with Google Gemini to debug, refactor, and explain
+                  code in real-time.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -163,7 +186,7 @@ const Docs = () => {
                   <h4 className="font-semibold mb-2">IntelliSense</h4>
                   <p className="text-sm text-muted">
                     Smart code completion, parameter info, and syntax validation
-                    for 5+ languages.
+                    for <strong>JavaScript, Python, Java, C++, and C</strong>.
                   </p>
                 </div>
                 <div className="bg-card border border-border p-5 rounded-xl">
@@ -236,20 +259,41 @@ const Docs = () => {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 font-mono text-sm shadow-2xl">
-              <div className="flex gap-1.5 mb-4">
-                <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex gap-2 text-zinc-400">
-                  <span className="text-green-500">$</span> python main.py
+            <div className="relative rounded-xl overflow-hidden glass-panel border border-zinc-800 shadow-[0_0_40px_rgba(0,0,0,0.5)] select-none">
+              {/* Terminal Header */}
+              <div className="bg-zinc-900/80 backdrop-blur-md px-4 py-3 flex items-center gap-2 border-b border-zinc-800">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
                 </div>
-                <div className="text-blue-400">Input required:</div>
-                <div className="text-zinc-100">Enter your name: Sourav</div>
-                <div className="text-zinc-300">
-                  Hello, Sourav! Welcome to Hexode.
+                <div className="text-xs text-zinc-500 font-mono ml-4 select-none">
+                  bash - hexode-sandbox - 80x24
+                </div>
+              </div>
+
+              {/* Terminal Body */}
+              <div className="bg-zinc-950/90 p-5 font-mono text-sm space-y-2">
+                <div className="flex gap-2 text-zinc-400">
+                  <span className="text-green-500 font-bold">~</span>
+                  <span className="text-blue-400">$</span>
+                  <span className="text-zinc-300">python main.py</span>
+                </div>
+                <div className="text-zinc-500 animate-pulse">
+                  Running securely in Judge0 sandbox...
+                </div>
+                <div className="text-blue-400 mt-2">Input required:</div>
+                <div className="text-zinc-100 flex gap-2">
+                  <span className="text-zinc-500">{">"}</span> Enter your name:
+                  Sourav
+                </div>
+                <div className="text-green-400 mt-2">
+                  Hello, Sourav! Welcome to Hexode v3.0.
+                </div>
+                <div className="flex gap-2 text-zinc-400 mt-4">
+                  <span className="text-green-500 font-bold">~</span>
+                  <span className="text-blue-400">$</span>
+                  <span className="w-2 h-4 bg-zinc-400 animate-pulse inline-block"></span>
                 </div>
               </div>
             </div>
@@ -263,10 +307,11 @@ const Docs = () => {
                   </div>
                   <div>
                     <strong className="text-foreground">
-                      Interactive Stdin:
+                      Pre-Execution Multi-line Input:
                     </strong>{" "}
-                    Unlike basic runners, our terminal supports interactive
-                    inputs (e.g., Python <code>input()</code>, C++{" "}
+                    Click "Run" or type `run` to open the Stdin panel. Supply
+                    inputs across multiple lines for scripts needing multiple
+                    prompts (e.g. Python's <code>input()</code>, or C++'s{" "}
                     <code>cin</code>).
                   </div>
                 </li>
@@ -276,10 +321,11 @@ const Docs = () => {
                   </div>
                   <div>
                     <strong className="text-foreground">
-                      File System Access:
+                      Judge0 Code Execution:
                     </strong>{" "}
-                    Scripts can read/write files in the virtual file system. Use
-                    commands like <code>ls</code> and <code>cat</code>.
+                    Scripts are securely executed using the Judge0
+                    infrastructure, delivering robust compile errors and rapid
+                    multi-language runtime.
                   </div>
                 </li>
               </ul>
@@ -296,7 +342,7 @@ const Docs = () => {
         <div className="space-y-6">
           <div className="border-b border-border pb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-bold mb-4">
-              v2.0 FEATURE
+              v3.0 FEATURE
             </div>
             <h2 className="text-3xl font-bold text-foreground">
               HexodeAI Assistant
@@ -360,9 +406,13 @@ const Docs = () => {
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="p-6 border-b border-border">
               <h3 className="text-xl font-bold mb-2">Guest Access Roles</h3>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted mb-4">
                 Control who can edit your project.
               </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 text-xs font-mono">
+                <Zap size={14} /> Powered by Y.js CRDTs for zero-conflict
+                syncing
+              </div>
             </div>
             <div className="p-6 grid gap-6 md:grid-cols-2">
               <div>
@@ -407,8 +457,8 @@ const Docs = () => {
               <div>
                 <h4 className="font-bold">Sandboxed Execution</h4>
                 <p className="text-sm text-muted mt-1">
-                  Code runs in isolated Piston containers. No access to the host
-                  server.
+                  Code runs in isolated, timeout-restricted Judge0 environments.
+                  No access to the host server.
                 </p>
               </div>
             </div>
@@ -435,6 +485,9 @@ const Docs = () => {
       <SEO
         title="Documentation"
         description="Comprehensive guides for Hexode. Learn about the Editor, Terminal, HexodeAI, and Collaboration features."
+        keywords="hexode documentation, cloud ide guide, collaborative editor tutorial, how to use hexode, ide help"
+        schemaType="TechArticle"
+        url="https://hexode.vercel.app/docs"
       />
 
       {/* Mobile Sidebar Toggle */}
@@ -476,7 +529,7 @@ const Docs = () => {
         <nav className="space-y-1">
           {sections
             .filter((s) =>
-              s.title.toLowerCase().includes(searchQuery.toLowerCase())
+              s.title.toLowerCase().includes(searchQuery.toLowerCase()),
             )
             .map((section) => (
               <button
@@ -486,29 +539,44 @@ const Docs = () => {
                   setIsSidebarOpen(false);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className={`w-full truncate flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full truncate flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group ${
                   activeSection === section.id
-                    ? "bg-blue-500/10 text-blue-500"
-                    : "text-muted hover:text-foreground hover:bg-card"
+                    ? "text-blue-500 bg-blue-500/10 shadow-[inset_4px_0_0_0_rgba(59,130,246,1)]"
+                    : "text-muted hover:text-foreground hover:bg-surface"
                 }`}
               >
-                {section.icon}
+                {/* Subtle active gradient */}
+                {activeSection === section.id && (
+                  <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 to-transparent pointer-events-none" />
+                )}
+
+                <span
+                  className={`transition-transform duration-300 ${activeSection === section.id ? "scale-110" : "group-hover:scale-110"}`}
+                >
+                  {section.icon}
+                </span>
                 <span className="truncate whitespace-nowrap">
                   {section.title}
                 </span>
-                {activeSection === section.id && (
-                  <ChevronRight size={14} className="ml-auto" />
-                )}
               </button>
             ))}
         </nav>
 
-        <div className="mt-8 pt-8 border-t border-border">
+        <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4 items-center">
+          <ThemeToggle />
+
+          <Link
+            to="/dashboard"
+            className="text-sm font-bold block w-full text-center bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+          >
+            Launch Editor
+          </Link>
+
           <Link
             to="/"
-            className="text-sm text-muted hover:text-foreground flex items-center gap-2"
+            className="text-sm text-muted hover:text-foreground flex items-center justify-center gap-2 mt-2"
           >
-            ← Back to Home
+            <ArrowLeft size={20} /> Back to Home
           </Link>
         </div>
       </motion.aside>
@@ -533,7 +601,7 @@ const Docs = () => {
                 setActiveSection(
                   sections[
                     sections.findIndex((s) => s.id === activeSection) - 1
-                  ].id
+                  ].id,
                 );
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
@@ -561,7 +629,7 @@ const Docs = () => {
                 setActiveSection(
                   sections[
                     sections.findIndex((s) => s.id === activeSection) + 1
-                  ].id
+                  ].id,
                 );
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
@@ -585,10 +653,10 @@ const Docs = () => {
 
         {/* Footer */}
         {/* <div className="mt-12 text-center text-sm text-muted">
-          Built with ❤️ by Sourav Paitandy • Hexode v2.0
+          Built with ❤️ by Sourav Paitandy • Hexode v3.0
         </div> */}
         <div className="mt-12 text-center text-zinc-600 text-xs font-mono pointer-events-none">
-          HEXODE_SYSTEM_V2.0
+          HEXODE_SYSTEM_V3.0
         </div>
       </main>
     </div>

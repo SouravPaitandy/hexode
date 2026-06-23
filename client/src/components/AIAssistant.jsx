@@ -14,8 +14,18 @@ import {
   Send,
   Trash2,
   Download,
+  Lightbulb,
+  Bug,
+  Zap,
+  MessageSquareCode,
+  Lock,
+  Coffee,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { useModal } from "../context/ModalContext";
+import { useToast } from "./Toast";
+import { useUser, SignInButton } from "@clerk/clerk-react";
+import { motion } from "framer-motion";
 
 const CodeBlock = ({ language, children, onInsert, inserted }) => {
   const [copied, setCopied] = useState(false);
@@ -81,15 +91,52 @@ const CodeBlock = ({ language, children, onInsert, inserted }) => {
 };
 
 const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
+  const { confirm } = useModal();
+  const { addToast } = useToast();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
-  const [insertingCode, setInsertingCode] = useState(null); // Track which code block is being inserted (by content hash or index?) - actually index is hard here. Let's use simple boolean state in CodeBlock or passed down.
-  // Actually, we can just use a temporary state here for animation if needed, or let CodeBlock handle its own inserted state if unique enough.
-  // But onInsertCode is passed from parent.
+  const quickActionsScrollRef = useRef(null);
+  const { isSignedIn, isLoaded } = useUser();
+
+  // AI Usage tracking (Local proxy for Server 20/day limit)
+  const MAX_AI_CALLS_PER_DAY = 20;
+  const [aiUsage, setAiUsage] = useState({ count: 0, date: new Date().toDateString() });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("hexode-ai-usage");
+    const today = new Date().toDateString();
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.date === today) {
+        setAiUsage(parsed);
+      } else {
+        const resetUsage = { count: 0, date: today };
+        setAiUsage(resetUsage);
+        localStorage.setItem("hexode-ai-usage", JSON.stringify(resetUsage));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const container = quickActionsScrollRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        container.scrollLeft -= e.deltaY;
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // const [insertingCode, setInsertingCode] = useState(null); // Track which code block is being inserted (by content hash or index?) - actually index is hard here. Let's use simple boolean state in CodeBlock or passed down.
 
   const handleInsertCodeWrapper = (code) => {
     if (onInsertCode) {
@@ -100,13 +147,42 @@ const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
 
   // Quick action templates
   const quickActions = [
-    { label: "💡 Explain", prompt: "Explain this code in detail" },
     {
-      label: "🐛 Find Bugs",
+      label: "Explain",
+      icon: Lightbulb,
+      color: "text-amber-400 dark:text-amber-300",
+      bg: "bg-amber-400/10",
+      border: "border-amber-400/20",
+      hover: "hover:bg-amber-400/20",
+      prompt: "Explain this code in detail",
+    },
+    {
+      label: "Find Bugs",
+      icon: Bug,
+      color: "text-red-400 dark:text-red-300",
+      bg: "bg-red-400/10",
+      border: "border-red-400/20",
+      hover: "hover:bg-red-400/20",
       prompt: "Find potential bugs and issues in this code",
     },
-    { label: "⚡ Optimize", prompt: "Suggest optimizations for this code" },
-    { label: "📝 Add Comments", prompt: "Add helpful comments to this code" },
+    {
+      label: "Optimize",
+      icon: Zap,
+      color: "text-blue-500 dark:text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/20",
+      hover: "hover:bg-blue-500/20",
+      prompt: "Suggest optimizations for this code",
+    },
+    {
+      label: "Comments",
+      icon: MessageSquareCode,
+      color: "text-emerald-500 dark:text-emerald-400",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20",
+      hover: "hover:bg-emerald-500/20",
+      prompt: "Add helpful comments to this code",
+    },
   ];
 
   const scrollToBottom = () => {
@@ -165,37 +241,172 @@ const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
     }
   }, [messages, roomId]);
 
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-  };
+  if (!isLoaded) {
+    return (
+      <div className="bg-surface flex flex-col h-[calc(100vh-3rem)] md:h-[calc(100vh-7rem)] justify-center items-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <p className="text-xs text-muted mt-2">Checking session status...</p>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="bg-surface flex flex-col h-[calc(100vh-3rem)] md:h-[calc(100vh-7rem)] relative overflow-hidden justify-center items-center p-6">
+        {/* Glowing backdrop blobs */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/3 w-36 h-36 rounded-full bg-indigo-500/10 blur-[60px] pointer-events-none" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative max-w-sm w-full flex flex-col items-center z-10"
+        >
+          {/* Animated glowing locked container */}
+          <div className="relative mb-6">
+            <motion.div
+              animate={{
+                scale: [1, 1.08, 1],
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute inset-0 bg-blue-500/20 blur-xl rounded-2xl"
+            />
+            <motion.div
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              className="relative w-16 h-16 bg-card border border-border/80 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-950/20 cursor-pointer"
+            >
+              <Lock className="w-7 h-7 text-blue-500" />
+            </motion.div>
+          </div>
+
+          <h3 className="text-xl font-bold text-foreground mb-2 text-center tracking-tight flex items-center gap-2">
+            <Sparkles className="w-4.5 h-4.5 text-blue-500 animate-pulse" />{" "}
+            Unlock HexodeAI
+          </h3>
+          <p className="text-xs text-muted max-w-[280px] mb-6 text-center leading-relaxed">
+            HexodeAI is a powerful context-aware assistant built directly into
+            your IDE. Sign in to start chatting, explaining code, and fixing
+            bugs.
+          </p>
+
+          {/* Feature highlights */}
+          <div className="grid grid-cols-2 gap-2.5 w-full max-w-[320px] mb-8">
+            <div className="p-3 rounded-xl bg-card/45 border border-border/40 flex flex-col items-start gap-1 hover:border-border/80 transition-colors">
+              <Lightbulb
+                className="w-4 h-4 text-amber-400 animate-bounce"
+                style={{ animationDuration: "3s" }}
+              />
+              <span className="text-[11px] font-semibold text-foreground">
+                Explain Code
+              </span>
+              <span className="text-[9px] text-muted text-left">
+                Detailed line-by-line breakdown.
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-card/45 border border-border/40 flex flex-col items-start gap-1 hover:border-border/80 transition-colors">
+              <Bug className="w-4 h-4 text-red-400" />
+              <span className="text-[11px] font-semibold text-foreground">
+                Fix & Debug
+              </span>
+              <span className="text-[9px] text-muted text-left">
+                Detect syntax errors and runtime issues.
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-card/45 border border-border/40 flex flex-col items-start gap-1 hover:border-border/80 transition-colors">
+              <Zap className="w-4 h-4 text-blue-400" />
+              <span className="text-[11px] font-semibold text-foreground">
+                Optimize
+              </span>
+              <span className="text-[9px] text-muted text-left">
+                Refactor algorithms for speed.
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-card/45 border border-border/40 flex flex-col items-start gap-1 hover:border-border/80 transition-colors">
+              <MessageSquareCode className="w-4 h-4 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-foreground">
+                Auto-Insert
+              </span>
+              <span className="text-[9px] text-muted text-left">
+                Directly inject AI code into editor.
+              </span>
+            </div>
+          </div>
+
+          {/* Glowing CTA Button */}
+          <SignInButton mode="modal">
+            <motion.button
+              whileHover={{ scale: 1.02, translateY: -1 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full max-w-[240px] py-2.5 px-4 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer outline-none"
+            >
+              Sign In to Continue
+            </motion.button>
+          </SignInButton>
+
+          <p className="text-[10px] text-muted/60 mt-4">
+            Completely free to use for all Hexode accounts
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   const handleClearHistory = () => {
-    if (confirm("Clear all chat history for this project?")) {
-      setMessages([
-        {
-          role: "assistant",
-          content: "👋 Chat history cleared! How can I help you?",
-        },
-      ]);
-      localStorage.removeItem(`ai-chat-${roomId}`);
-    }
+    confirm({
+      title: "Clear History?",
+      message: "Clear all chat history for this project?",
+      confirmText: "Clear",
+      type: "danger",
+      onConfirm: () => {
+        setMessages([
+          {
+            role: "assistant",
+            content: "👋 Chat history cleared! How can I help you?",
+          },
+        ]);
+        localStorage.removeItem(`ai-chat-${roomId}`);
+      },
+    });
   };
 
   const sendQuickAction = (prompt) => {
     setInput(prompt);
     // Auto-send after a brief delay
-    setTimeout(() => {
-      sendMessage(prompt);
-    }, 100);
+    // setTimeout(() => {
+    //   sendMessage(prompt);
+    // }, 100);
   };
 
-  const sendMessage = async (customMessage) => {
+  const sendMessage = async (e, customMessage) => {
     const messageToSend = customMessage || input.trim();
+    if (!fileName) {
+      addToast("Please select a file to chat with AI.", "error");
+      return;
+    }
     if (!messageToSend || isLoading) return;
 
     const userMessage = messageToSend;
     setInput("");
     setIsLoading(true);
+
+    if (aiUsage.count >= MAX_AI_CALLS_PER_DAY) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: userMessage },
+        { 
+          role: "assistant", 
+          content: "🚫 **Daily Limit Reached (20/20)**\n\nHexode is a free, open-source project. To keep servers running for everyone, we have a daily limit on AI chats.\n\n[☕ Sponsor Hexode](/sponsor) to help us scale and increase limits for everyone!" 
+        }
+      ]);
+      setIsLoading(false);
+      return;
+    }
 
     // Add user message
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
@@ -268,6 +479,12 @@ const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
           }
         }
       }
+
+      // Update AI Usage count successfully
+      const newUsage = { count: aiUsage.count + 1, date: new Date().toDateString() };
+      setAiUsage(newUsage);
+      localStorage.setItem("hexode-ai-usage", JSON.stringify(newUsage));
+
     } catch (error) {
       console.error("[AI] Error:", error);
       setMessages((prev) => {
@@ -294,26 +511,44 @@ const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
   return (
     <div className="bg-surface flex flex-col h-[calc(100vh-3rem)] md:h-[calc(100vh-7rem)]">
       {/* Quick Actions */}
-      {/* <div className="p-4 border-b border-border flex flex-wrap gap-2">
-        {quickActions.map((action) => (
+      <div className="p-3 border-b border-border/50 bg-surface/30 flex items-center justify-between gap-2">
+        {/* Scrollable Left Part */}
+        <div
+          ref={quickActionsScrollRef}
+          className="flex items-center gap-2 overflow-x-auto border-r border-gray-600 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-1 pr-2"
+        >
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                title={action.prompt}
+                onClick={() => sendQuickAction(action.prompt)}
+                className={`shrink-0 px-3 py-1.5 text-xs rounded-full flex items-center gap-1.5 transition-all shadow-sm border ${action.bg} ${action.border} ${action.hover} ${action.color} font-medium`}
+                disabled={isLoading}
+              >
+                <Icon size={12} /> {action.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Fixed Right Part (Usage & Trash Icon) */}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-surface rounded-full border border-border/50 text-[10px] text-muted font-medium">
+            <div className={`w-1.5 h-1.5 rounded-full ${aiUsage.count >= MAX_AI_CALLS_PER_DAY ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+            {Math.max(0, MAX_AI_CALLS_PER_DAY - aiUsage.count)} left
+          </div>
           <button
-            key={action.label}
-            onClick={() => sendQuickAction(action.prompt)}
-            className="px-3 py-1 text-xs bg-card hover:bg-card-hover rounded-full text-muted transition-colors flex items-center gap-1"
+            onClick={handleClearHistory}
+            className="shrink-0 px-2.5 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-full text-red-400 transition-all flex items-center gap-1 hover:-translate-y-0.5 shadow-sm"
+            title="Clear chat history"
             disabled={isLoading}
           >
-            {action.label}
+            <Trash2 size={12} />
           </button>
-        ))}
-        <button
-          onClick={handleClearHistory}
-          className="ml-auto px-3 py-1 text-xs bg-card hover:bg-card-hover rounded-full text-red-400 transition-colors flex items-center gap-1"
-          title="Clear chat history"
-          disabled={isLoading}
-        >
-          <Trash2 size={12} /> Clear
-        </button>
-      </div> */}
+        </div>
+      </div>
 
       {/* Messages */}
       <div
@@ -469,10 +704,19 @@ const AIAssistant = ({ roomId, fileName, onInsertCode }) => {
 
       {/* Input */}
       <form
-        onSubmit={sendMessage}
+        onSubmit={(e) => {
+          e.preventDefault();
+          sendMessage();
+        }}
         className="p-4 border-t border-border bg-surface"
       >
-        <div className="flex gap-2.5 items-center bg-card rounded-md px-3 py-1 border border-border focus-within:border-blue-500 transition-colors">
+        <div
+          className={`flex gap-2.5 items-center rounded-md px-3 py-1 border focus-within:border-blue-500 transition-colors ${
+            input !== ""
+              ? "border-blue-500 bg-card"
+              : "border-border bg-card/50"
+          }`}
+        >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
