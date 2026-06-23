@@ -1,4 +1,4 @@
-# Hexode - AI-Powered Cloud-Based Collaborative IDE
+# Hexode v3.0 - AI-Powered Cloud-Based Collaborative IDE
 
 <img src="client/public/logo.png" alt="Hexode" width="80"/>
 
@@ -250,9 +250,10 @@ Add Google Analytics 4 tracking:
 
 ### Themes
 
-Toggle between dark/light mode via the theme toggle button. 
+Toggle between dark/light mode via the theme toggle button.
 
 Four premium custom themes are included built-in:
+
 - **Neon Nights** (Cyberpunk aesthetic)
 - **Oceanic Abyss** (Deep sea blue)
 - **Rose Pine Dawn** (Warm light aesthetic)
